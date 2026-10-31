@@ -1,0 +1,6 @@
+{
+  "name": "Career Genius",
+  "description": "Comprehensive student career guidance platform featuring domain assessments, dynamic leaderboards, AI career mentoring, accredited courses, teacher feedback, task systems, peer-to-peer messaging, and resource sharing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
