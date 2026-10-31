@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Helper Primitives
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && request.auth.token.email == "uutkarsh319@gmail.com" && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // User Profile Validation Blueprint
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'email', 'role']) &&
+             data.keys().hasOnly([
+               'id', 'name', 'email', 'role', 'cgpa', 'areaOfInterest',
+               'college', 'graduationYear', 'points', 'rank', 'photoURL',
+               'createdAt', 'completedCourseIds', 'completedTaskIds',
+               'bookmarkedResourceIds', 'assessmentScores'
+             ]) &&
+             data.id is string && isValidId(data.id) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 120 &&
+             data.role in ['student', 'teacher', 'admin'] &&
+             (!('cgpa' in data) || (data.cgpa is number && data.cgpa >= 0.0 && data.cgpa <= 10.0)) &&
+             (!('areaOfInterest' in data) || (data.areaOfInterest is string && data.areaOfInterest.size() <= 100)) &&
+             (!('college' in data) || (data.college is string && data.college.size() <= 150)) &&
+             (!('graduationYear' in data) || (data.graduationYear is number)) &&
+             (!('points' in data) || (data.points is number)) &&
+             (!('rank' in data) || (data.rank is number)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100));
+    }
+
+    // Registered Students & Users Collection
+    match /users/{userId} {
+      // Individual student profile retrieval: Owner or Admin only (PII Protection)
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      // Querying all registered students: Restricted strictly to Administrator
+      allow list: if isAdmin();
+
+      // Student registration / creation
+      allow create: if isValidId(userId) &&
+                       isOwner(userId) &&
+                       isVerified() &&
+                       incoming().id == userId &&
+                       (incoming().role == 'student' || isAdmin()) &&
+                       isValidUser(incoming());
+
+      // Profile updates: Owner can update their student details without role escalation; Admin has full override
+      allow update: if isValidId(userId) &&
+                       (isOwner(userId) || isAdmin()) &&
+                       isValidUser(incoming()) &&
+                       incoming().id == existing().id &&
+                       (isAdmin() || incoming().role == existing().role);
+
+      // Deletion: Restricted strictly to Admin
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // Administrator Identity Directory
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && isSignedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

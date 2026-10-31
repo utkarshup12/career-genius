@@ -28,7 +28,18 @@ import { ResourcesTasksView } from './components/ResourcesTasksView.tsx';
 import { AdminStudioView } from './components/AdminStudioView.tsx';
 import { CareerRoadmapView } from './components/CareerRoadmapView.tsx';
 import { AiMentorModal } from './components/AiMentorModal.tsx';
-import { Sparkles, CheckCircle2 } from 'lucide-react';
+import { LoginPage } from './components/LoginPage.tsx';
+import {
+  auth,
+  onAuthStateChanged,
+  testFirestoreConnection,
+  logOutUser,
+  BOOTSTRAP_ADMIN_EMAIL,
+  db,
+  doc,
+  getDoc,
+} from './firebase.ts';
+import { Sparkles, CheckCircle2, Lock, X } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -45,6 +56,7 @@ export default function App() {
   const [selectedPeerId, setSelectedPeerId] = useState<string>('');
   const [resources, setResources] = useState<SharedResource[]>([]);
   const [aiMentorOpen, setAiMentorOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +67,66 @@ export default function App() {
       setNotification((curr) => (curr === msg ? null : curr));
     }, 3500);
   };
+
+  // Test Firestore Connection on boot per Skill instruction
+  useEffect(() => {
+    testFirestoreConnection();
+  }, []);
+
+  // Listen to Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        const isAdminEmail = firebaseUser.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
+
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data() as any;
+            const updatedProfile: UserProfile = {
+              id: firebaseUser.uid,
+              name: data.name || firebaseUser.displayName || 'Student',
+              email: firebaseUser.email,
+              role: isAdminEmail ? 'admin' : (data.role || 'student'),
+              cgpa: data.cgpa ?? 8.5,
+              areaOfInterest: data.areaOfInterest || 'Software Developer',
+              college: data.college || 'National Engineering Institute',
+              graduationYear: data.graduationYear || 2026,
+              points: data.points ?? 1200,
+              rank: data.rank ?? 4,
+              weeklyActivity: data.weeklyActivity || [
+                { day: 'Mon', studyHours: 3.5, score: 180 },
+                { day: 'Tue', studyHours: 4.2, score: 240 },
+                { day: 'Wed', studyHours: 2.8, score: 120 },
+                { day: 'Thu', studyHours: 5.0, score: 310 },
+                { day: 'Fri', studyHours: 3.0, score: 190 },
+                { day: 'Sat', studyHours: 6.5, score: 420 },
+                { day: 'Sun', studyHours: 4.0, score: 260 },
+              ],
+              completedCourseIds: data.completedCourseIds || [],
+              completedTaskIds: data.completedTaskIds || [],
+              bookmarkedResourceIds: data.bookmarkedResourceIds || [],
+              assessmentScores: data.assessmentScores || [],
+              badges: data.badges || [],
+            };
+
+            setCurrentUser(updatedProfile);
+
+            // Sync with server session
+            await fetch('/api/user/sync-google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatedProfile),
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to fetch user doc on auth state change:', err);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Load initial data from backend
   const loadAllData = async () => {
@@ -100,6 +172,32 @@ export default function App() {
     loadAllData();
   }, []);
 
+  // Handle Login Success
+  const handleLoginSuccess = (userProfile: UserProfile) => {
+    setCurrentUser(userProfile);
+    setLoginModalOpen(false);
+    triggerNotification(`Authenticated as ${userProfile.name} (${userProfile.role.toUpperCase()})`);
+
+    // Reload cohort & feedback data
+    fetch('/api/leaderboard')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setLeaderboard(data.leaderboard);
+      });
+  };
+
+  // Handle Sign Out
+  const handleSignOut = async () => {
+    try {
+      await logOutUser();
+      triggerNotification('Signed out from Google session.');
+      // Switch back to standard student persona
+      handleSwitchRole('student');
+    } catch (err) {
+      console.error('Sign-out error:', err);
+    }
+  };
+
   // Handle Role Switch
   const handleSwitchRole = async (role: UserRole) => {
     try {
@@ -112,6 +210,9 @@ export default function App() {
       if (data.success) {
         setCurrentUser(data.user);
         triggerNotification(`Active persona switched to ${role.toUpperCase()}`);
+        if (role !== 'admin' && activeTab === 'admin') {
+          setActiveTab('dashboard');
+        }
         // Reload feedback since role changes what is visible
         const fRes = await fetch('/api/feedback').then((r) => r.json());
         if (fRes.success) {
@@ -399,6 +500,8 @@ export default function App() {
     );
   }
 
+  const isAdmin = currentUser.role === 'admin' || currentUser.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
       {/* Toast Notification Banner */}
@@ -409,13 +512,15 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Bar Header strictly following Top Bar Contract */}
+      {/* Top Bar Header strictly following Top Bar Contract & RBAC */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         currentUser={currentUser}
         onSwitchRole={handleSwitchRole}
         onOpenAiMentor={() => setAiMentorOpen(true)}
+        onOpenLogin={() => setLoginModalOpen(true)}
+        onSignOut={handleSignOut}
       />
 
       {/* Main View Port Container */}
@@ -495,16 +600,64 @@ export default function App() {
           />
         )}
 
+        {/* STRICT RBAC: Student Cannot Access Admin Page */}
         {activeTab === 'admin' && (
-          <AdminStudioView
-            subjects={subjects}
-            assessments={assessments}
-            currentUser={currentUser}
-            onAddQuestion={handleAddQuestion}
-            onAddSubject={handleAddSubject}
-          />
+          isAdmin ? (
+            <AdminStudioView
+              subjects={subjects}
+              assessments={assessments}
+              currentUser={currentUser}
+              onAddQuestion={handleAddQuestion}
+              onAddSubject={handleAddSubject}
+            />
+          ) : (
+            <div className="max-w-xl mx-auto py-16 px-4 text-center space-y-5 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm my-8">
+              <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <Lock className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">
+                  Access Denied · RBAC Security Fence
+                </span>
+                <h2 className="text-2xl font-extrabold text-slate-900">
+                  Administrator Studio Restricted
+                </h2>
+                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed pt-1">
+                  Students cannot access the Admin page. Only authorized administrators (such as <code className="font-mono text-slate-900 font-bold">{BOOTSTRAP_ADMIN_EMAIL}</code>) are permitted to inspect registered student databases or author platform questions.
+                </p>
+              </div>
+              <div className="pt-2">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                >
+                  Return to Student Dashboard
+                </button>
+              </div>
+            </div>
+          )
         )}
       </main>
+
+      {/* Student Google Login / Sign Up Modal */}
+      {loginModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative w-full max-w-4xl my-auto animate-in fade-in zoom-in-95 duration-150">
+            <button
+              onClick={() => setLoginModalOpen(false)}
+              className="absolute right-4 top-4 z-20 text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 transition-colors"
+              aria-label="Close Login Modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <LoginPage
+              currentUser={currentUser}
+              onLoginSuccess={handleLoginSuccess}
+              onClose={() => setLoginModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Gemini AI Career Mentor Modal */}
       <AiMentorModal
@@ -521,8 +674,15 @@ export default function App() {
             <span aria-hidden="true">·</span>
             <span>University Student Guidance & Skills Benchmark</span>
           </div>
-          <div>
-            <span>Verified Technical Credentials & Academic Mentorship · 2026</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLoginModalOpen(true)}
+              className="text-slate-600 hover:text-slate-900 underline text-xs font-medium"
+            >
+              Google Student Sign-In / Register
+            </button>
+            <span aria-hidden="true">·</span>
+            <span>Verified Credentials & Mentorship · 2026</span>
           </div>
         </div>
       </footer>

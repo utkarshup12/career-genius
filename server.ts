@@ -1056,6 +1056,86 @@ app.get('/api/user', (req: Request, res: Response) => {
   res.json({ success: true, user: currentUser });
 });
 
+app.post('/api/user/sync-google', (req: Request, res: Response) => {
+  const { id, name, email, photoURL, cgpa, areaOfInterest, college, graduationYear } = req.body;
+  if (!id || !email) {
+    return res.status(400).json({ success: false, error: 'User ID and email are required.' });
+  }
+
+  const isAdminEmail = String(email).toLowerCase() === 'uutkarsh319@gmail.com';
+  const assignedRole = isAdminEmail ? 'admin' : 'student';
+
+  const existingStudent = cohortStudents.find((s) => s.id === id || s.email.toLowerCase() === String(email).toLowerCase());
+
+  if (existingStudent) {
+    existingStudent.name = name || existingStudent.name;
+    existingStudent.email = email;
+    existingStudent.role = assignedRole;
+    if (typeof cgpa === 'number') existingStudent.cgpa = cgpa;
+    if (areaOfInterest) existingStudent.areaOfInterest = areaOfInterest;
+    if (college) existingStudent.college = college;
+    if (graduationYear) existingStudent.graduationYear = graduationYear;
+    currentUser = { ...existingStudent };
+  } else {
+    const newStudent: UserProfile = {
+      id: String(id),
+      name: String(name || email.split('@')[0]),
+      email: String(email),
+      role: assignedRole,
+      cgpa: typeof cgpa === 'number' ? cgpa : 8.5,
+      areaOfInterest: String(areaOfInterest || 'Software Developer'),
+      college: String(college || 'National Engineering Institute'),
+      graduationYear: Number(graduationYear) || 2026,
+      points: 1000,
+      rank: cohortStudents.length + 1,
+      weeklyActivity: [
+        { day: 'Mon', studyHours: 3.0, score: 150 },
+        { day: 'Tue', studyHours: 4.0, score: 200 },
+        { day: 'Wed', studyHours: 2.5, score: 110 },
+        { day: 'Thu', studyHours: 3.5, score: 180 },
+        { day: 'Fri', studyHours: 3.0, score: 160 },
+        { day: 'Sat', studyHours: 5.0, score: 320 },
+        { day: 'Sun', studyHours: 3.5, score: 190 },
+      ],
+      completedCourseIds: [],
+      completedTaskIds: [],
+      assessmentScores: [],
+      bookmarkedResourceIds: [],
+      badges: [],
+    };
+    cohortStudents.push(newStudent);
+    currentUser = { ...newStudent };
+  }
+
+  recalculateCohortRanks();
+  res.json({ success: true, user: currentUser, message: `Session synced for ${currentUser.email}` });
+});
+
+app.get('/api/admin/students', (req: Request, res: Response) => {
+  // Return all registered students formatted for the admin studio directory
+  res.json({
+    success: true,
+    students: cohortStudents.map((s) => ({
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      role: s.role,
+      cgpa: s.cgpa,
+      areaOfInterest: s.areaOfInterest,
+      college: s.college,
+      graduationYear: s.graduationYear,
+      points: s.points,
+      rank: s.rank,
+      completedCourseCount: s.completedCourseIds?.length || 0,
+      completedTaskCount: s.completedTaskIds?.length || 0,
+      assessmentCount: s.assessmentScores?.length || 0,
+      assessmentScores: s.assessmentScores || [],
+      badgesCount: s.badges?.filter((b: any) => b.isUnlocked)?.length || 0,
+      registeredAt: '2026-10-20T10:00:00Z',
+    })),
+  });
+});
+
 app.post('/api/user/update-profile', (req: Request, res: Response) => {
   const { name, cgpa, areaOfInterest, college, graduationYear } = req.body;
   
@@ -1082,7 +1162,7 @@ app.post('/api/user/switch-role', (req: Request, res: Response) => {
       currentUser.email = 'neha.gupta@faculty.edu';
     } else if (role === 'admin') {
       currentUser.name = 'Admin Controller';
-      currentUser.email = 'admin@careergenius.edu';
+      currentUser.email = 'uutkarsh319@gmail.com';
     } else {
       currentUser.name = 'Aarav Sharma';
       currentUser.email = 'aarav.sharma@campus.edu';

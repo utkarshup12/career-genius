@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered student profile storing academic details, target career tracks, and platform metrics",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "teacher", "admin"]
+        },
+        "cgpa": {
+          "type": "number"
+        },
+        "areaOfInterest": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "college": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "graduationYear": {
+          "type": "number"
+        },
+        "points": {
+          "type": "number"
+        },
+        "rank": {
+          "type": "number"
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Authorized platform administrator record",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        },
+        "assignedAt": {
+          "type": "string"
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores registered student profiles with their CGPA, skills, career interests, and platform activity"
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "$ref": "#/entities/Admin"
+      },
+      "description": "Stores authorized administrator identities for role verification"
+    }
+  }
+}
