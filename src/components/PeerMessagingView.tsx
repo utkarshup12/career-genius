@@ -5,7 +5,7 @@ import { Send, ArrowLeft, MessageSquare, Check, UserCheck } from 'lucide-react';
 interface PeerMessagingViewProps {
   peers: PeerSummary[];
   activeThread: PeerMessage[];
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   selectedPeerId: string;
   onSelectPeer: (peerId: string) => void;
   onSendMessage: (receiverId: string, content: string) => Promise<void>;
@@ -167,7 +167,7 @@ export const PeerMessagingView: React.FC<PeerMessagingViewProps> = ({
                   </div>
                 ) : (
                   activeThread.map((msg) => {
-                    const isMe = msg.senderId === currentUser.id;
+                    const isMe = currentUser !== null && msg.senderId === currentUser.id;
                     const timeStr = new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',

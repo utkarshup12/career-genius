@@ -3,7 +3,7 @@ import { UserProfile } from '../types/index.ts';
 import { Sparkles, X, Send, Bot, Copy, Check, Terminal } from 'lucide-react';
 
 interface AiMentorModalProps {
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -40,9 +40,9 @@ export const AiMentorModal: React.FC<AiMentorModalProps> = ({
         body: JSON.stringify({
           query: questionText,
           studentContext: {
-            cgpa: currentUser.cgpa,
-            areaOfInterest: currentUser.areaOfInterest,
-            college: currentUser.college,
+            cgpa: currentUser?.cgpa || 9.0,
+            areaOfInterest: currentUser?.areaOfInterest || 'Software Developer',
+            college: currentUser?.college || 'National Engineering Institute',
           },
         }),
       });
@@ -86,7 +86,9 @@ export const AiMentorModal: React.FC<AiMentorModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Personalized advice for {currentUser.name} ({currentUser.areaOfInterest} · {currentUser.cgpa.toFixed(2)} CGPA)
+                {currentUser
+                  ? `Personalized advice for ${currentUser.name} (${currentUser.areaOfInterest} · ${currentUser.cgpa.toFixed(2)} CGPA)`
+                  : 'AI Engineering Guidance & Benchmark Recommendations'}
               </p>
             </div>
           </div>
@@ -129,7 +131,7 @@ export const AiMentorModal: React.FC<AiMentorModalProps> = ({
             <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
               <Bot className="w-8 h-8 text-indigo-600 animate-bounce mx-auto" />
               <p className="text-xs font-semibold text-slate-700">
-                Analyzing your CGPA ({currentUser.cgpa}), assessment scores & career roadmap...
+                Analyzing your profile ({currentUser ? `${currentUser.cgpa.toFixed(2)} CGPA` : 'Benchmark Profile'}), assessment scores & career roadmap...
               </p>
             </div>
           )}

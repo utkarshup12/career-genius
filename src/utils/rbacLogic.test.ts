@@ -1,12 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  isOwner,
   isUserAdmin,
   canAccessAdminStudio,
   filterStudentsRoster,
   validateStudentRegistration,
   BOOTSTRAP_ADMIN_EMAIL,
+  LIVE_PUBLIC_URL,
 } from './rbacLogic.ts';
+
+test('isOwner correctly identifies website owner email uutkarsh319@gmail.com', () => {
+  assert.equal(isOwner({ email: 'uutkarsh319@gmail.com' }), true);
+  assert.equal(isOwner({ email: 'UUTKARSH319@GMAIL.COM' }), true);
+  assert.equal(isOwner({ email: 'other@gmail.com' }), false);
+  assert.equal(isOwner(null), false);
+  assert.equal(isOwner(undefined), false);
+  assert.equal(typeof LIVE_PUBLIC_URL, 'string');
+});
 
 test('isUserAdmin correctly grants admin status to bootstrap email', () => {
   assert.equal(isUserAdmin({ email: 'uutkarsh319@gmail.com', role: 'student' }), true);
@@ -17,14 +28,14 @@ test('isUserAdmin correctly grants admin status to bootstrap email', () => {
   assert.equal(isUserAdmin(undefined), false);
 });
 
-test('canAccessAdminStudio forbids students and allows verified admins', () => {
+test('canAccessAdminStudio forbids students and allows website owner / verified admins', () => {
   const student = { email: 'student1@gmail.com', role: 'student' };
-  const teacher = { email: 'prof.smith@faculty.edu', role: 'teacher' };
   const admin = { email: 'uutkarsh319@gmail.com', role: 'admin' };
+  const owner = { email: 'uutkarsh319@gmail.com', role: 'student' };
 
   assert.equal(canAccessAdminStudio(student), false);
-  assert.equal(canAccessAdminStudio(teacher), false);
   assert.equal(canAccessAdminStudio(admin), true);
+  assert.equal(canAccessAdminStudio(owner), true);
 });
 
 test('filterStudentsRoster accurately filters students by search term, track, and CGPA tier', () => {

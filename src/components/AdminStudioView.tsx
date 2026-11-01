@@ -27,6 +27,12 @@ import {
   X,
   FileText,
   AlertTriangle,
+  Edit3,
+  Trash2,
+  Share2,
+  Check,
+  Laptop,
+  Smartphone,
 } from 'lucide-react';
 
 interface RegisteredStudentEntry {

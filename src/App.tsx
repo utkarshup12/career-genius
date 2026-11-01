@@ -29,6 +29,7 @@ import { AdminStudioView } from './components/AdminStudioView.tsx';
 import { CareerRoadmapView } from './components/CareerRoadmapView.tsx';
 import { AiMentorModal } from './components/AiMentorModal.tsx';
 import { LoginPage } from './components/LoginPage.tsx';
+import { GuestLandingView } from './components/GuestLandingView.tsx';
 import {
   auth,
   onAuthStateChanged,
@@ -39,7 +40,7 @@ import {
   doc,
   getDoc,
 } from './firebase.ts';
-import { Sparkles, CheckCircle2, Lock, X } from 'lucide-react';
+import { Sparkles, CheckCircle2, Lock, X, School } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -57,6 +58,7 @@ export default function App() {
   const [resources, setResources] = useState<SharedResource[]>([]);
   const [aiMentorOpen, setAiMentorOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginInitialRole, setLoginInitialRole] = useState<'student' | 'teacher'>('student');
   const [notification, setNotification] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -190,9 +192,10 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await logOutUser();
-      triggerNotification('Signed out from Google session.');
-      // Switch back to standard student persona
-      handleSwitchRole('student');
+      await fetch('/api/user/logout', { method: 'POST' });
+      setCurrentUser(null);
+      triggerNotification('Signed out successfully. Viewing as Guest Explorer.');
+      setActiveTab('dashboard');
     } catch (err) {
       console.error('Sign-out error:', err);
     }
@@ -488,7 +491,7 @@ export default function App() {
     }
   };
 
-  if (loading || !currentUser) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-slate-700">
         <div className="text-center space-y-3">
@@ -500,7 +503,13 @@ export default function App() {
     );
   }
 
-  const isAdmin = currentUser.role === 'admin' || currentUser.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
+  const isAdmin =
+    currentUser !== null &&
+    (currentUser.role === 'admin' ||
+      currentUser.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase());
+
+  const isTeacherOrAdmin =
+    currentUser !== null && (currentUser.role === 'teacher' || isAdmin);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
@@ -519,19 +528,34 @@ export default function App() {
         currentUser={currentUser}
         onSwitchRole={handleSwitchRole}
         onOpenAiMentor={() => setAiMentorOpen(true)}
-        onOpenLogin={() => setLoginModalOpen(true)}
+        onOpenLogin={(role = 'student') => {
+          setLoginInitialRole(role);
+          setLoginModalOpen(true);
+        }}
         onSignOut={handleSignOut}
       />
 
       {/* Main View Port Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
         {activeTab === 'dashboard' && (
-          <DashboardView
-            currentUser={currentUser}
-            onUpdateProfile={handleUpdateProfile}
-            onNavigate={setActiveTab}
-            onOpenAiMentor={() => setAiMentorOpen(true)}
-          />
+          currentUser ? (
+            <DashboardView
+              currentUser={currentUser}
+              onUpdateProfile={handleUpdateProfile}
+              onNavigate={setActiveTab}
+              onOpenAiMentor={() => setAiMentorOpen(true)}
+            />
+          ) : (
+            <GuestLandingView
+              onOpenLogin={(role = 'student') => {
+                setLoginInitialRole(role);
+                setLoginModalOpen(true);
+              }}
+              onNavigate={setActiveTab}
+              onOpenAiMentor={() => setAiMentorOpen(true)}
+              assessments={assessments}
+            />
+          )
         )}
 
         {activeTab === 'roadmap' && (
@@ -579,13 +603,50 @@ export default function App() {
           />
         )}
 
+        {/* STRICT RBAC: Only Teacher and Admin can access Teacher Evaluation Page */}
         {activeTab === 'feedback' && (
-          <TeacherFeedbackView
-            feedbacks={feedbacks}
-            currentUser={currentUser}
-            allCohortStudents={cohortStudents}
-            onSubmitTeacherFeedback={handleSubmitTeacherFeedback}
-          />
+          isTeacherOrAdmin ? (
+            <TeacherFeedbackView
+              feedbacks={feedbacks}
+              currentUser={currentUser!}
+              allCohortStudents={cohortStudents}
+              onSubmitTeacherFeedback={handleSubmitTeacherFeedback}
+            />
+          ) : (
+            <div className="max-w-xl mx-auto py-16 px-4 text-center space-y-5 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm my-8">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mx-auto">
+                <School className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                  Teacher & Faculty Access Restricted
+                </span>
+                <h2 className="text-2xl font-extrabold text-slate-900">
+                  Faculty Evaluation Portal
+                </h2>
+                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed pt-1">
+                  Only verified university professors, faculty mentors, and platform administrators can access this portal to evaluate student submissions and author mentor verdicts. Students cannot view or access teacher tools.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center justify-center gap-3">
+                <button
+                  onClick={() => {
+                    setLoginInitialRole('teacher');
+                    setLoginModalOpen(true);
+                  }}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                >
+                  Faculty / Teacher Sign-In
+                </button>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                >
+                  Return to Home
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {activeTab === 'resources' && (
@@ -606,7 +667,7 @@ export default function App() {
             <AdminStudioView
               subjects={subjects}
               assessments={assessments}
-              currentUser={currentUser}
+              currentUser={currentUser!}
               onAddQuestion={handleAddQuestion}
               onAddSubject={handleAddSubject}
             />
@@ -639,7 +700,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Student Google Login / Sign Up Modal */}
+      {/* Student / Teacher Google Login Modal */}
       {loginModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="relative w-full max-w-4xl my-auto animate-in fade-in zoom-in-95 duration-150">
@@ -652,6 +713,7 @@ export default function App() {
             </button>
             <LoginPage
               currentUser={currentUser}
+              initialRole={loginInitialRole}
               onLoginSuccess={handleLoginSuccess}
               onClose={() => setLoginModalOpen(false)}
             />

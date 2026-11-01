@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 interface CareerRoadmapViewProps {
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   courses: Course[];
   tasks: CareerTask[];
   onNavigate: (tab: string) => void;
@@ -37,7 +37,9 @@ export const CareerRoadmapView: React.FC<CareerRoadmapViewProps> = ({
   onNavigate,
   onOpenAiMentor,
 }) => {
-  const [selectedTrack, setSelectedTrack] = useState<string>(currentUser.areaOfInterest);
+  const [selectedTrack, setSelectedTrack] = useState<string>(
+    currentUser?.areaOfInterest || 'Software Developer'
+  );
   const [selectedMilestone, setSelectedMilestone] = useState<RoadmapMilestone | null>(null);
 
   const availableTracks = [
@@ -49,23 +51,25 @@ export const CareerRoadmapView: React.FC<CareerRoadmapViewProps> = ({
   ];
 
   // Derive completed assessment subjects
-  const completedAssessmentSubjectIds = currentUser.assessmentScores.map((s) => {
-    if (s.subjectTitle.toLowerCase().includes('front')) return 'subj-fe';
-    if (s.subjectTitle.toLowerCase().includes('back')) return 'subj-be';
-    if (s.subjectTitle.toLowerCase().includes('algo') || s.subjectTitle.toLowerCase().includes('data'))
-      return 'subj-dsa';
-    if (s.subjectTitle.toLowerCase().includes('cloud') || s.subjectTitle.toLowerCase().includes('devops'))
-      return 'subj-cloud';
-    if (s.subjectTitle.toLowerCase().includes('ai') || s.subjectTitle.toLowerCase().includes('learn'))
-      return 'subj-ai';
-    return 'subj-general';
-  });
+  const completedAssessmentSubjectIds = currentUser
+    ? currentUser.assessmentScores.map((s) => {
+        if (s.subjectTitle.toLowerCase().includes('front')) return 'subj-fe';
+        if (s.subjectTitle.toLowerCase().includes('back')) return 'subj-be';
+        if (s.subjectTitle.toLowerCase().includes('algo') || s.subjectTitle.toLowerCase().includes('data'))
+          return 'subj-dsa';
+        if (s.subjectTitle.toLowerCase().includes('cloud') || s.subjectTitle.toLowerCase().includes('devops'))
+          return 'subj-cloud';
+        if (s.subjectTitle.toLowerCase().includes('ai') || s.subjectTitle.toLowerCase().includes('learn'))
+          return 'subj-ai';
+        return 'subj-general';
+      })
+    : [];
 
   const rawMilestones = getTrackRoadmap(selectedTrack);
   const progressData = calculateRoadmapProgress(
     rawMilestones,
-    currentUser.completedCourseIds,
-    currentUser.completedTaskIds,
+    currentUser?.completedCourseIds || [],
+    currentUser?.completedTaskIds || [],
     completedAssessmentSubjectIds
   );
 
@@ -115,6 +119,7 @@ export const CareerRoadmapView: React.FC<CareerRoadmapViewProps> = ({
         <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
           {availableTracks.map((trk) => {
             const isUserEnrolled =
+              currentUser !== null &&
               currentUser.areaOfInterest.toLowerCase() === trk.toLowerCase();
             const isSelected = selectedTrack.toLowerCase() === trk.toLowerCase();
 

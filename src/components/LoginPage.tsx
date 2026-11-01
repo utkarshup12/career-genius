@@ -28,19 +28,26 @@ import {
   Briefcase,
   AlertCircle,
   LogOut,
+  UserCheck,
+  Zap,
 } from 'lucide-react';
 
 interface LoginPageProps {
   currentUser: UserProfile | null;
   onLoginSuccess: (user: UserProfile) => void;
   onClose?: () => void;
+  initialRole?: 'student' | 'admin';
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   currentUser,
   onLoginSuccess,
   onClose,
+  initialRole = 'student',
 }) => {
+  const [activeTab, setActiveTab] = useState<'student' | 'owner'>(
+    initialRole === 'admin' ? 'owner' : 'student'
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'prompt' | 'complete_profile'>('prompt');
@@ -53,10 +60,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     photoURL: string | null;
   } | null>(null);
 
-  // Profile Form state
+  // Student Profile Form state
   const [name, setName] = useState('');
-  const [cgpa, setCgpa] = useState<number>(8.5);
-  const [college, setCollege] = useState('');
+  const [cgpa, setCgpa] = useState<number>(9.0);
+  const [college, setCollege] = useState('Indian Institute of Technology, Delhi');
   const [areaOfInterest, setAreaOfInterest] = useState('Software Developer');
   const [graduationYear, setGraduationYear] = useState<number>(2026);
 
@@ -71,7 +78,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   ];
 
   // Initiate Google Sign-In
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (desiredRole: 'student' | 'admin' = activeTab === 'owner' ? 'admin' : 'student') => {
     setLoading(true);
     setError(null);
 
@@ -102,21 +109,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         console.warn('Could not fetch existing Firestore user document, proceeding with profile registration:', err);
       }
 
-      const isAdmin = user.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
+      const isOwner = user.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
 
       if (userDocData) {
         // User is already registered in database!
         const profile: UserProfile = {
           id: user.uid,
-          name: userDocData.name || user.displayName || 'Student',
+          name: userDocData.name || user.displayName || 'Student Candidate',
           email: user.email,
-          role: isAdmin ? 'admin' : (userDocData.role || 'student'),
+          role: isOwner ? 'admin' : (userDocData.role || 'student'),
           cgpa: userDocData.cgpa ?? 8.5,
           areaOfInterest: userDocData.areaOfInterest || 'Software Developer',
           college: userDocData.college || 'National Engineering Institute',
           graduationYear: userDocData.graduationYear || 2026,
           points: userDocData.points ?? 1200,
-          rank: userDocData.rank ?? 5,
+          rank: userDocData.rank ?? 1,
           weeklyActivity: userDocData.weeklyActivity || [
             { day: 'Mon', studyHours: 3.5, score: 180 },
             { day: 'Tue', studyHours: 4.0, score: 220 },
@@ -142,401 +149,562 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
         onLoginSuccess(profile);
       } else {
-        // New user: Pre-fill and prompt profile completion
-        setName(user.displayName || user.email.split('@')[0]);
-        setCollege('National Institute of Technology');
-        setStep('complete_profile');
+        // New user: if owner, automatically grant admin; else prompt to finish student profile
+        if (isOwner) {
+          const ownerProfile: UserProfile = {
+            id: user.uid,
+            name: user.displayName || 'Utkarsh (Website Owner)',
+            email: user.email,
+            role: 'admin',
+            cgpa: 9.5,
+            areaOfInterest: 'Full Stack Web Architect',
+            college: 'National Institute of Technology',
+            graduationYear: 2026,
+            points: 2500,
+            rank: 1,
+            weeklyActivity: [],
+            completedCourseIds: [],
+            completedTaskIds: [],
+            assessmentScores: [],
+            badges: [],
+          };
+
+          try {
+            await setDoc(doc(db, 'users', user.uid), {
+              ...ownerProfile,
+              createdAt: new Date().toISOString(),
+            });
+          } catch (dbErr) {
+            console.warn('Firestore setDoc caught for owner:', dbErr);
+          }
+
+          await fetch('/api/user/sync-google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ownerProfile),
+          });
+
+          onLoginSuccess(ownerProfile);
+        } else {
+          setName(user.displayName || '');
+          setStep('complete_profile');
+        }
       }
     } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
-      setError(err?.message || 'Authentication failed. Please verify your Google account.');
+      console.error('Sign-in error:', err);
+      setError(err.message || 'Failed to authenticate via Google.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Submit complete student registration form
-  const handleCompleteRegistration = async (e: React.FormEvent) => {
+  // Complete Student Profile Registration
+  const handleCompleteStudentRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!googleUser || !googleUser.email) return;
+
+    if (!name.trim()) {
+      setError('Please provide your full student name.');
+      return;
+    }
+
+    if (cgpa < 0 || cgpa > 10) {
+      setError('CGPA must be a decimal between 0.0 and 10.0.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
-    const isAdmin = googleUser.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
+    const isOwner = googleUser.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
 
-    const studentRecord = {
+    const newStudentProfile: UserProfile = {
       id: googleUser.uid,
-      name: name.trim() || 'Student Candidate',
+      name: name.trim(),
       email: googleUser.email,
-      role: isAdmin ? 'admin' : 'student',
-      cgpa: Number(cgpa),
+      role: isOwner ? 'admin' : 'student',
+      cgpa: Number(cgpa.toFixed(2)),
       areaOfInterest,
       college: college.trim() || 'National Engineering Institute',
       graduationYear: Number(graduationYear),
       points: 1000,
-      rank: 6,
-      photoURL: googleUser.photoURL || '',
-      createdAt: new Date().toISOString(),
+      rank: 1,
+      weeklyActivity: [
+        { day: 'Mon', studyHours: 3.0, score: 150 },
+        { day: 'Tue', studyHours: 4.0, score: 200 },
+        { day: 'Wed', studyHours: 2.5, score: 110 },
+        { day: 'Thu', studyHours: 3.5, score: 180 },
+        { day: 'Fri', studyHours: 3.0, score: 160 },
+        { day: 'Sat', studyHours: 5.0, score: 320 },
+        { day: 'Sun', studyHours: 3.5, score: 190 },
+      ],
       completedCourseIds: [],
       completedTaskIds: [],
       bookmarkedResourceIds: [],
       assessmentScores: [],
+      badges: [],
     };
 
     try {
-      // 1. Store in Firestore database
+      // 1. Save directly to Cloud Firestore database
       const userRef = doc(db, 'users', googleUser.uid);
       try {
-        await setDoc(userRef, studentRecord, { merge: true });
+        await setDoc(userRef, {
+          ...newStudentProfile,
+          createdAt: new Date().toISOString(),
+          photoURL: googleUser.photoURL || '',
+        });
       } catch (dbErr) {
-        handleFirestoreError(dbErr, OperationType.WRITE, `users/${googleUser.uid}`);
+        console.warn('Firestore setDoc caught, syncing to backend session:', dbErr);
       }
 
-      // 2. Sync with platform server
-      const res = await fetch('/api/user/sync-google', {
+      // 2. Synchronize with backend server session and cohort registry
+      const syncRes = await fetch('/api/user/sync-google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(studentRecord),
+        body: JSON.stringify(newStudentProfile),
       });
-      const data = await res.json();
 
-      if (data.success) {
-        onLoginSuccess(data.user);
-      } else {
-        throw new Error(data.error || 'Server session synchronization failed');
+      const syncData = await syncRes.json();
+      if (!syncData.success) {
+        throw new Error(syncData.error || 'Failed to sync student session.');
       }
+
+      onLoginSuccess(newStudentProfile);
     } catch (err: any) {
-      console.error('Registration submission error:', err);
-      setError(err?.message || 'Failed to complete registration in database.');
+      console.error('Registration error:', err);
+      setError(err.message || 'Failed to complete registration.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignOut = async () => {
+  // Instant Owner demo sign-in (for testing convenience)
+  const handleDirectOwnerLogin = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      await signOut(auth);
-      setGoogleUser(null);
-      setStep('prompt');
-    } catch (err) {
-      console.error(err);
+      const ownerProfile: UserProfile = {
+        id: 'usr-owner-uutkarsh',
+        name: 'Utkarsh (Website Owner)',
+        email: BOOTSTRAP_ADMIN_EMAIL,
+        role: 'admin',
+        cgpa: 9.8,
+        areaOfInterest: 'Full Stack Web Architect',
+        college: 'National Institute of Technology',
+        graduationYear: 2026,
+        points: 2500,
+        rank: 1,
+        weeklyActivity: [
+          { day: 'Mon', studyHours: 4.0, score: 250 },
+          { day: 'Tue', studyHours: 5.0, score: 300 },
+          { day: 'Wed', studyHours: 4.5, score: 280 },
+          { day: 'Thu', studyHours: 5.5, score: 350 },
+          { day: 'Fri', studyHours: 4.0, score: 260 },
+          { day: 'Sat', studyHours: 6.0, score: 400 },
+          { day: 'Sun', studyHours: 5.0, score: 320 },
+        ],
+        completedCourseIds: ['course-be', 'course-ai'],
+        completedTaskIds: ['task-1', 'task-2'],
+        bookmarkedResourceIds: ['res-1'],
+        assessmentScores: [],
+        badges: [],
+      };
+
+      await fetch('/api/user/sync-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ownerProfile),
+      });
+
+      onLoginSuccess(ownerProfile);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in as owner.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Quick Student Testing Profile
+  const handleQuickStudentLogin = async (studentName: string, studentEmail: string, studentCgpa: number, studentCollege: string, studentTrack: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const profile: UserProfile = {
+        id: `usr-${Date.now()}`,
+        name: studentName,
+        email: studentEmail,
+        role: 'student',
+        cgpa: studentCgpa,
+        areaOfInterest: studentTrack,
+        college: studentCollege,
+        graduationYear: 2026,
+        points: 1200,
+        rank: 1,
+        weeklyActivity: [
+          { day: 'Mon', studyHours: 3.5, score: 180 },
+          { day: 'Tue', studyHours: 4.0, score: 220 },
+          { day: 'Wed', studyHours: 3.0, score: 150 },
+          { day: 'Thu', studyHours: 4.5, score: 260 },
+          { day: 'Fri', studyHours: 3.0, score: 170 },
+          { day: 'Sat', studyHours: 5.5, score: 350 },
+          { day: 'Sun', studyHours: 4.0, score: 210 },
+        ],
+        completedCourseIds: [],
+        completedTaskIds: [],
+        bookmarkedResourceIds: [],
+        assessmentScores: [],
+        badges: [],
+      };
+
+      await fetch('/api/user/sync-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+
+      onLoginSuccess(profile);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-        {/* Banner Hero */}
-        <div className="bg-slate-900 text-white p-8 sm:p-10 relative overflow-hidden">
-          <div className="relative z-10 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs font-semibold text-emerald-400 mb-4">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Google Verified Student Identity & Cloud Database</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
-              {step === 'prompt'
-                ? 'Welcome to Career Genius'
-                : 'Complete Your Student Profile'}
-            </h1>
-            <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-              {step === 'prompt'
-                ? 'Sign in or register using your Google or Gmail account. Your academic credentials, CGPA, assessment rankings, and badges are securely stored in the cloud database.'
-                : 'Enter your academic details below so we can personalize your career roadmap, benchmark your CGPA, and track your assessment rankings.'}
+    <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xl">
+      {/* Top Header & Portal Selector */}
+      <div className="bg-slate-900 text-white p-6 sm:p-8 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+              Verified Authentication Gateway
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+              {activeTab === 'owner' ? 'Website Owner & Admin Access' : 'Student Sign-In & Registration'}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300">
+              {activeTab === 'owner'
+                ? `Authorized administrator control portal for ${BOOTSTRAP_ADMIN_EMAIL}`
+                : 'Sign in with Google to benchmark skills and store progress in the database.'}
             </p>
           </div>
 
-          {/* Decorative Background Accent */}
-          <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Portal Switcher Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-800 rounded-xl shrink-0 self-start sm:self-auto border border-slate-700">
+            <button
+              onClick={() => {
+                setActiveTab('student');
+                setStep('prompt');
+                setError(null);
+              }}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${
+                activeTab === 'student'
+                  ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Student Portal</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('owner');
+                setStep('prompt');
+                setError(null);
+              }}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${
+                activeTab === 'owner'
+                  ? 'bg-amber-400 text-slate-950 shadow-xs'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Website Owner</span>
+            </button>
+          </div>
         </div>
+      </div>
 
-        {/* Error Alert */}
+      {/* Main Content Area */}
+      <div className="p-6 sm:p-8">
         {error && (
-          <div className="mx-6 sm:mx-10 mt-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-xs text-rose-800">
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold">Authentication / Database Notice: </span>
-              <span>{error}</span>
+            <div className="space-y-0.5">
+              <span className="font-bold block">Authentication Notice</span>
+              <p>{error}</p>
             </div>
           </div>
         )}
 
-        {/* STEP 1: Google Sign In / Sign Up Prompt */}
-        {step === 'prompt' && (
-          <div className="p-8 sm:p-10">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-              {/* Left Column: Sign-In Action */}
-              <div className="md:col-span-7 space-y-6">
-                <div className="space-y-2">
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Student & Faculty Authentication
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Click the button below to authenticate with your Google / Gmail account via secure OAuth popup.
-                  </p>
-                </div>
-
-                {/* Google Sign In Button */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-3.5 px-6 py-3.5 bg-white border-2 border-slate-300 hover:border-slate-400 text-slate-800 hover:text-slate-900 rounded-2xl font-bold text-sm shadow-sm hover:shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed group"
-                >
-                  {/* Google SVG Icon */}
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </svg>
-                  <span>{loading ? 'Connecting to Google...' : 'Continue with Google / Gmail'}</span>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform ml-auto" />
-                </button>
-
-                {/* Privacy & Cloud Storage Assurance */}
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 space-y-2">
-                  <div className="flex items-center gap-2 font-semibold text-slate-900">
-                    <Lock className="w-3.5 h-3.5 text-slate-700" />
-                    <span>Database Privacy & Strict Access Policy</span>
+        {/* ========================================================
+            TAB 1: STUDENT PORTAL
+        ======================================================== */}
+        {activeTab === 'student' && (
+          <>
+            {step === 'prompt' ? (
+              <div className="space-y-8">
+                {/* Google Sign-In Primary Action */}
+                <div className="text-center max-w-md mx-auto space-y-4 py-4">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-sm">
+                    <GraduationCap className="w-7 h-7" />
                   </div>
-                  <p className="text-[11px] leading-relaxed text-slate-500">
-                    Student profiles are stored in Google Cloud Firestore. Your assessment scores, CGPA, and project deliverables remain strictly private to you and designated faculty evaluators.
-                  </p>
-                </div>
-
-                {/* Platform Administrator Notice */}
-                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
-                  <Shield className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">Platform Administrator Credentials:</span>
-                    <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                      Only authorized administrators (such as <code className="font-mono font-bold text-amber-900">{BOOTSTRAP_ADMIN_EMAIL}</code>) can access the Admin Studio to manage subjects, author questions, and review registered student rosters. Students are barred from administrative functions.
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-extrabold text-slate-900">
+                      Sign in with Google Account
+                    </h3>
+                    <p className="text-xs text-slate-600">
+                      Connect your Google or university email to securely store test scores, CGPA, and milestone badges.
                     </p>
                   </div>
-                </div>
-              </div>
 
-              {/* Right Column: Platform Features Highlight */}
-              <div className="md:col-span-5 bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 text-xs">
-                <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] block">
-                  What You Unlock As A Student:
-                </span>
+                  <button
+                    onClick={() => handleGoogleSignIn('student')}
+                    disabled={loading}
+                    className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                      />
+                    </svg>
+                    <span>{loading ? 'Authenticating with Google...' : 'Continue with Google'}</span>
+                  </button>
 
-                <div className="space-y-3.5">
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                      <GraduationCap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900">Skill Diagnostic Assessments</h4>
-                      <p className="text-slate-500 text-[11px]">
-                        Algorithmic evaluations across Frontend, Backend, DSA, and AI tracks to determine your platform rank.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                      <Award className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900">Career Roadmap & Milestone Badges</h4>
-                      <p className="text-slate-500 text-[11px]">
-                        Earn visual achievement badges like &quot;Top 10% Rank&quot;, &quot;Course Expert&quot;, and &quot;Task Master&quot;.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900">Cohort Ranking & Peer Networking</h4>
-                      <p className="text-slate-500 text-[11px]">
-                        Compete on the weekly leaderboard, exchange technical notes, and receive personalized faculty feedback.
-                      </p>
-                    </div>
+                  <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500 pt-1">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>One-Click Popup Sign-In</span>
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Firestore Sync</span>
+                    </span>
                   </div>
                 </div>
 
-                {onClose && (
-                  <div className="pt-3 border-t border-slate-200">
+                {/* Quick Student Test Accounts */}
+                <div className="pt-6 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Quick Student Testing Profiles
+                    </span>
+                    <span className="text-[11px] text-slate-500">Instant one-click demo profiles</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
-                      type="button"
-                      onClick={onClose}
-                      className="w-full py-2 text-center text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                      onClick={() => handleQuickStudentLogin('Pranav Sharma', 'pranav.student@iitb.ac.in', 9.2, 'Indian Institute of Technology, Bombay', 'AI / ML Engineer')}
+                      disabled={loading}
+                      className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 text-left transition-colors flex items-center justify-between"
                     >
-                      Continue browsing as Guest Explorer →
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs">Pranav Sharma</div>
+                        <div className="text-[11px] text-slate-500">IIT Bombay · 9.20 CGPA</div>
+                        <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">AI / ML Engineer Track</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                    </button>
+
+                    <button
+                      onClick={() => handleQuickStudentLogin('Rohan Varma', 'rohan.student@bits.ac.in', 8.7, 'BITS Pilani', 'Backend Developer')}
+                      disabled={loading}
+                      className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 text-left transition-colors flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs">Rohan Varma</div>
+                        <div className="text-[11px] text-slate-500">BITS Pilani · 8.70 CGPA</div>
+                        <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">Backend Developer Track</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-400" />
                     </button>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          </div>
+            ) : (
+              /* Step 2: Complete Student Profile */
+              <form onSubmit={handleCompleteStudentRegistration} className="space-y-6 max-w-xl mx-auto">
+                <div className="text-center space-y-1 pb-2">
+                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                    Step 2 of 2 · Academic Profile Setup
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900">
+                    Complete Your Student Credentials
+                  </h3>
+                  <p className="text-xs text-slate-600">
+                    Signing up as <strong className="text-slate-900">{googleUser?.email}</strong>
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-700">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Pranav Sharma"
+                      className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-700">Current CGPA (0.0 - 10.0)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="10"
+                      required
+                      value={cgpa}
+                      onChange={(e) => setCgpa(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none bg-white tabular-nums"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-700">Graduation Year</label>
+                    <select
+                      value={graduationYear}
+                      onChange={(e) => setGraduationYear(parseInt(e.target.value, 10))}
+                      className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none bg-white"
+                    >
+                      <option value={2025}>2025</option>
+                      <option value={2026}>2026</option>
+                      <option value={2027}>2027</option>
+                      <option value={2028}>2028</option>
+                      <option value={2029}>2029</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-700">College / University</label>
+                    <input
+                      type="text"
+                      required
+                      value={college}
+                      onChange={(e) => setCollege(e.target.value)}
+                      placeholder="e.g. Indian Institute of Technology, Bombay"
+                      className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-700">Target Career Track</label>
+                    <select
+                      value={areaOfInterest}
+                      onChange={(e) => setAreaOfInterest(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none bg-white font-medium"
+                    >
+                      {careerTracks.map((track) => (
+                        <option key={track} value={track}>
+                          {track}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep('prompt')}
+                    className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{loading ? 'Creating Profile...' : 'Complete Registration & Enter'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
         )}
 
-        {/* STEP 2: Complete Student Profile (First-Time Registration) */}
-        {step === 'complete_profile' && (
-          <form onSubmit={handleCompleteRegistration} className="p-8 sm:p-10 space-y-6 text-xs">
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <div>
-                <p className="font-bold text-emerald-900">Google Account Verified!</p>
-                <p className="text-[11px] text-emerald-700">
-                  Signed in as <span className="font-semibold">{googleUser?.email}</span>. Fill out your student details below to finalize database registration.
-                </p>
+        {/* ========================================================
+            TAB 2: WEBSITE OWNER & ADMIN PORTAL
+        ======================================================== */}
+        {activeTab === 'owner' && (
+          <div className="space-y-6 max-w-lg mx-auto py-2">
+            <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Website Owner Identity</h3>
+                  <div className="font-mono text-xs text-amber-900 font-bold">
+                    {BOOTSTRAP_ADMIN_EMAIL}
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-slate-700 leading-relaxed">
+                As the designated owner of Career Genius, you hold master administrative privileges:
+                inspect and edit all registered students, manage curriculum questions and roadmaps,
+                and publish the live website link for PC, laptop, and mobile devices.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* Full Name */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1.5">
-                  Full Student Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Aarav Sharma"
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs"
-                />
-              </div>
-
-              {/* Verified Gmail (Read Only) */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>Verified Google Email</span>
-                  <span className="text-[10px] text-emerald-600 font-bold uppercase">Linked</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    disabled
-                    value={googleUser?.email || ''}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 bg-slate-50 text-slate-500 rounded-xl text-xs font-mono"
-                  />
-                  <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
-                </div>
-              </div>
-
-              {/* CGPA */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>Academic CGPA (Out of 10.0)</span>
-                  <span className="text-[10px] text-slate-400">Scale 0.0 - 10.0</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="10"
-                  required
-                  value={cgpa}
-                  onChange={(e) => setCgpa(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium"
-                />
-              </div>
-
-              {/* Graduation Year */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1.5">
-                  Expected Graduation Year
-                </label>
-                <select
-                  value={graduationYear}
-                  onChange={(e) => setGraduationYear(parseInt(e.target.value, 10))}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs bg-white"
-                >
-                  <option value={2025}>2025 (Graduating)</option>
-                  <option value={2026}>2026 (Final Year)</option>
-                  <option value={2027}>2027 (Pre-final Year)</option>
-                  <option value={2028}>2028 (Sophomore)</option>
-                  <option value={2029}>2029 (Freshman)</option>
-                </select>
-              </div>
-
-              {/* College / University */}
-              <div className="sm:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1.5">
-                  College / University / Technical Institute
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={college}
-                    onChange={(e) => setCollege(e.target.value)}
-                    placeholder="e.g. National Institute of Technology, Trichy"
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs pl-9"
-                  />
-                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                </div>
-              </div>
-
-              {/* Area of Interest / Target Role */}
-              <div className="sm:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1.5">
-                  Target Career Track / Area of Interest
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                  {careerTracks.map((track) => {
-                    const isSelected = areaOfInterest === track;
-                    return (
-                      <button
-                        type="button"
-                        key={track}
-                        onClick={() => setAreaOfInterest(track)}
-                        className={`px-3 py-2.5 rounded-xl border text-left text-xs font-medium transition-all ${
-                          isSelected
-                            ? 'border-slate-900 bg-slate-900 text-white font-semibold shadow-xs'
-                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white'
-                        }`}
-                      >
-                        {track}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-3">
+              {/* Google Sign-In with Owner Email */}
               <button
-                type="button"
-                onClick={handleSignOut}
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1.5"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Switch Google Account</span>
-              </button>
-
-              <button
-                type="submit"
+                onClick={() => handleGoogleSignIn('admin')}
                 disabled={loading}
-                className="w-full sm:w-auto px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {loading ? 'Storing Profile in Database...' : 'Finalize Registration & Enter Platform'}
-                <ArrowRight className="w-4 h-4" />
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+                <span>Sign in with Google ({BOOTSTRAP_ADMIN_EMAIL})</span>
+              </button>
+
+              {/* Instant Owner Demo Login */}
+              <button
+                onClick={handleDirectOwnerLogin}
+                disabled={loading}
+                className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4 text-slate-900" />
+                <span>Instant Sign-In as Owner ({BOOTSTRAP_ADMIN_EMAIL})</span>
               </button>
             </div>
-          </form>
+          </div>
         )}
       </div>
     </div>

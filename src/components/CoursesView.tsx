@@ -14,7 +14,7 @@ import {
 
 interface CoursesViewProps {
   courses: Course[];
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   onCompleteCourse: (courseId: string) => Promise<void>;
 }
 
@@ -61,7 +61,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       {/* Courses List */}
       <div className="space-y-8">
         {courses.map((course) => {
-          const isCompleted = currentUser.completedCourseIds.includes(course.id);
+          const isCompleted = currentUser ? currentUser.completedCourseIds.includes(course.id) : false;
           const isExpanded = expandedCourseId === course.id;
           const imageSrc = imageMap[course.imageKey] || '/src/assets/images/course_frontend_mastery_1793426261105.jpg';
 
@@ -231,7 +231,23 @@ export const CoursesView: React.FC<CoursesViewProps> = ({
       {selectedCourseForCert && (
         <CertificateModal
           course={selectedCourseForCert}
-          student={currentUser}
+          student={currentUser || {
+            id: 'guest',
+            name: 'Student Explorer',
+            email: 'guest@campus.edu',
+            role: 'student',
+            cgpa: 9.0,
+            areaOfInterest: selectedCourseForCert.track,
+            college: 'National Engineering Institute',
+            graduationYear: 2026,
+            points: 1000,
+            rank: 5,
+            weeklyActivity: [],
+            completedCourseIds: [],
+            completedTaskIds: [],
+            assessmentScores: [],
+            badges: [],
+          }}
           onClose={() => setSelectedCourseForCert(null)}
         />
       )}

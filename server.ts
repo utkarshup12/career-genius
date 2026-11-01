@@ -508,180 +508,12 @@ const assessments: Assessment[] = [
   },
 ];
 
-// Current logged in user (student by default, switchable via UI)
-let currentUser: UserProfile = {
-  id: 'usr-student-aarav',
-  name: 'Aarav Sharma',
-  email: 'aarav.sharma@campus.edu',
-  role: 'student',
-  cgpa: 8.8,
-  areaOfInterest: 'Frontend Developer',
-  college: 'National Institute of Technology',
-  graduationYear: 2026,
-  points: 1420,
-  rank: 4,
-  weeklyActivity: [
-    { day: 'Mon', studyHours: 3.5, score: 180 },
-    { day: 'Tue', studyHours: 4.2, score: 240 },
-    { day: 'Wed', studyHours: 2.8, score: 120 },
-    { day: 'Thu', studyHours: 5.0, score: 310 },
-    { day: 'Fri', studyHours: 3.0, score: 190 },
-    { day: 'Sat', studyHours: 6.5, score: 420 },
-    { day: 'Sun', studyHours: 4.0, score: 260 },
-  ],
-  completedCourseIds: ['course-fe'],
-  completedTaskIds: ['task-1', 'task-2'],
-  assessmentScores: [
-    {
-      assessmentId: 'asmt-fe',
-      subjectTitle: 'Frontend Architecture & Modern Web',
-      score: 36,
-      maxScore: 40,
-      percentage: 90,
-      date: '2026-10-25',
-    },
-    {
-      assessmentId: 'asmt-dsa',
-      subjectTitle: 'Data Structures & Algorithms',
-      score: 32,
-      maxScore: 40,
-      percentage: 80,
-      date: '2026-10-28',
-    },
-  ],
-  bookmarkedResourceIds: ['res-1'],
-  badges: [],
-};
+// Current logged in user (null by default for unauthenticated guests)
+let currentUser: UserProfile | null = null;
 
-// Cohort of students for platform ranking and competition
-const cohortStudents: UserProfile[] = [
-  {
-    id: 'usr-priya',
-    name: 'Priya Patel',
-    email: 'priya.patel@tech.edu',
-    role: 'student',
-    cgpa: 9.5,
-    areaOfInterest: 'AI / ML Engineer',
-    college: 'IIT Delhi',
-    graduationYear: 2026,
-    points: 1980,
-    rank: 1,
-    weeklyActivity: [
-      { day: 'Mon', studyHours: 5, score: 300 },
-      { day: 'Tue', studyHours: 6, score: 350 },
-      { day: 'Wed', studyHours: 5.5, score: 320 },
-      { day: 'Thu', studyHours: 6, score: 380 },
-      { day: 'Fri', studyHours: 4.5, score: 280 },
-      { day: 'Sat', studyHours: 7, score: 450 },
-      { day: 'Sun', studyHours: 5, score: 320 },
-    ],
-    completedCourseIds: ['course-ai', 'course-be'],
-    completedTaskIds: ['task-1', 'task-2', 'task-5'],
-    assessmentScores: [{ assessmentId: 'asmt-ai', subjectTitle: 'Machine Learning & AI Engineering', score: 40, maxScore: 40, percentage: 100, date: '2026-10-22' }],
-    badges: [],
-  },
-  {
-    id: 'usr-rahul',
-    name: 'Rahul Verma',
-    email: 'rahul.verma@eng.edu',
-    role: 'student',
-    cgpa: 9.1,
-    areaOfInterest: 'Backend Developer',
-    college: 'BITS Pilani',
-    graduationYear: 2026,
-    points: 1820,
-    rank: 2,
-    weeklyActivity: [
-      { day: 'Mon', studyHours: 4, score: 250 },
-      { day: 'Tue', studyHours: 5, score: 300 },
-      { day: 'Wed', studyHours: 4, score: 220 },
-      { day: 'Thu', studyHours: 5.5, score: 340 },
-      { day: 'Fri', studyHours: 3.5, score: 210 },
-      { day: 'Sat', studyHours: 6, score: 390 },
-      { day: 'Sun', studyHours: 4, score: 270 },
-    ],
-    completedCourseIds: ['course-be'],
-    completedTaskIds: ['task-1', 'task-3'],
-    assessmentScores: [{ assessmentId: 'asmt-be', subjectTitle: 'Backend Systems & Database Architecture', score: 38, maxScore: 40, percentage: 95, date: '2026-10-24' }],
-    badges: [],
-  },
-  {
-    id: 'usr-ananya',
-    name: 'Ananya Sen',
-    email: 'ananya.sen@univ.edu',
-    role: 'student',
-    cgpa: 8.9,
-    areaOfInterest: 'Software Developer',
-    college: 'IIIT Hyderabad',
-    graduationYear: 2026,
-    points: 1650,
-    rank: 3,
-    weeklyActivity: [
-      { day: 'Mon', studyHours: 3.8, score: 210 },
-      { day: 'Tue', studyHours: 4.5, score: 270 },
-      { day: 'Wed', studyHours: 4.0, score: 230 },
-      { day: 'Thu', studyHours: 4.2, score: 250 },
-      { day: 'Fri', studyHours: 3.2, score: 180 },
-      { day: 'Sat', studyHours: 5.8, score: 360 },
-      { day: 'Sun', studyHours: 3.5, score: 210 },
-    ],
-    completedCourseIds: ['course-fe', 'course-be'],
-    completedTaskIds: ['task-2'],
-    assessmentScores: [{ assessmentId: 'asmt-dsa', subjectTitle: 'Data Structures & Algorithms', score: 35, maxScore: 40, percentage: 87.5, date: '2026-10-26' }],
-    badges: [],
-  },
-  currentUser,
-  {
-    id: 'usr-kevin',
-    name: 'Kevin Chen',
-    email: 'kevin.chen@poly.edu',
-    role: 'student',
-    cgpa: 8.6,
-    areaOfInterest: 'Frontend Developer',
-    college: 'State Technical University',
-    graduationYear: 2027,
-    points: 1290,
-    rank: 5,
-    weeklyActivity: [
-      { day: 'Mon', studyHours: 3, score: 150 },
-      { day: 'Tue', studyHours: 3.5, score: 190 },
-      { day: 'Wed', studyHours: 2.5, score: 130 },
-      { day: 'Thu', studyHours: 4, score: 220 },
-      { day: 'Fri', studyHours: 2.8, score: 150 },
-      { day: 'Sat', studyHours: 5, score: 310 },
-      { day: 'Sun', studyHours: 3, score: 180 },
-    ],
-    completedCourseIds: [],
-    completedTaskIds: ['task-1'],
-    assessmentScores: [{ assessmentId: 'asmt-fe', subjectTitle: 'Frontend Architecture & Modern Web', score: 32, maxScore: 40, percentage: 80, date: '2026-10-20' }],
-    badges: [],
-  },
-  {
-    id: 'usr-david',
-    name: 'David Miller',
-    email: 'david.miller@inst.edu',
-    role: 'student',
-    cgpa: 8.4,
-    areaOfInterest: 'DevOps & Cloud',
-    college: 'Western Tech Academy',
-    graduationYear: 2026,
-    points: 1140,
-    rank: 6,
-    weeklyActivity: [
-      { day: 'Mon', studyHours: 2.5, score: 140 },
-      { day: 'Tue', studyHours: 3, score: 170 },
-      { day: 'Wed', studyHours: 2, score: 110 },
-      { day: 'Thu', studyHours: 3.5, score: 200 },
-      { day: 'Fri', studyHours: 2.5, score: 130 },
-      { day: 'Sat', studyHours: 4.5, score: 260 },
-      { day: 'Sun', studyHours: 2.5, score: 150 },
-    ],
-    completedCourseIds: [],
-    completedTaskIds: ['task-4'],
-    assessmentScores: [{ assessmentId: 'asmt-cloud', subjectTitle: 'Cloud Infrastructure & DevOps', score: 30, maxScore: 40, percentage: 75, date: '2026-10-18' }],
-    badges: [],
-  },
-];
+// Registered students cohort for platform ranking and competition
+// Initialized empty - only real registered students who sign up appear
+const cohortStudents: UserProfile[] = [];
 
 // Tasks
 const tasks: CareerTask[] = [
@@ -791,8 +623,8 @@ const courses: Course[] = [
     code: 'BE-201',
     title: 'Distributed Backend & Cloud Systems',
     track: 'Backend Developer',
-    instructor: 'Prof. Neha Gupta',
-    instructorRole: 'Professor of Distributed Systems & Database Lead',
+    instructor: 'Distributed Systems Faculty',
+    instructorRole: 'Curriculum & Database Systems Lead',
     duration: '5 Weeks (30 Hours)',
     level: 'Advanced',
     description: 'Architect resilient backend services with PostgreSQL indexing, Redis caching, event streaming, and fault-tolerant microservices.',
@@ -882,136 +714,33 @@ const courses: Course[] = [
   },
 ];
 
-// Teacher feedback initial data
-let teacherFeedbacks: TeacherFeedback[] = [
-  {
-    id: 'fb-1',
-    studentId: 'usr-student-aarav',
-    studentName: 'Aarav Sharma',
-    teacherName: 'Prof. Neha Gupta',
-    teacherRole: 'Head of Department (Computer Science & Engineering)',
-    subject: 'Core Web Architecture & Algorithm Proficiency',
-    date: '2026-10-27',
-    ratings: {
-      technicalAcumen: 9,
-      problemSolving: 8,
-      projectDiscipline: 9,
-      consistency: 9,
-    },
-    keyStrengths: [
-      'Strong grasp of React rendering cycles and DOM optimization',
-      'Consistent daily commitment to algorithmic practice (30+ hours weekly)',
-      'Clean Git commit hygiene with descriptive pull request documentation',
-    ],
-    areasOfImprovement: [
-      'Deepen understanding of distributed database sharding and CAP theorem trade-offs',
-      'Increase participation in open-source discussions on peer repository reviews',
-    ],
-    mentorVerdict: 'Aarav is performing in the top 5% of frontend engineering candidates. His high CGPA (8.8) paired with solid practical deliverables makes him an exceptional candidate for top-tier software engineering internships.',
-    actionablePlan: 'Complete the Distributed Backend assessment by next week to broaden system design horizons, and prepare a presentation on Web Vitals for the campus developer symposium.',
-  },
-  {
-    id: 'fb-2',
-    studentId: 'usr-student-aarav',
-    studentName: 'Aarav Sharma',
-    teacherName: 'Dr. Aris Thorne',
-    teacherRole: 'Faculty Mentor & Industry Fellow',
-    subject: 'Frontend Performance & Production Readiness',
-    date: '2026-10-22',
-    ratings: {
-      technicalAcumen: 9,
-      problemSolving: 9,
-      projectDiscipline: 8,
-      consistency: 9,
-    },
-    keyStrengths: [
-      'Excellent performance in the Frontend Assessment (scored 36/40)',
-      'Proactive in helping junior peers debug complex JavaScript closure problems',
-    ],
-    areasOfImprovement: [
-      'Experiment with WebAssembly for computationally heavy browser audio/video tasks',
-      'Document system architecture diagrams before coding large components',
-    ],
-    mentorVerdict: 'Exceptional aptitude for frontend architecture. Aarav demonstrates the precision and aesthetic discipline expected in modern engineering teams.',
-    actionablePlan: 'Finish the Frontend Engineering Mastery course capstone and download the verified credential for resume inclusion.',
-  },
-];
+// Teacher feedback records (initialized empty, only real faculty evaluations stored)
+let teacherFeedbacks: TeacherFeedback[] = [];
 
-// Peer Messages
-let peerMessages: PeerMessage[] = [
-  {
-    id: 'msg-1',
-    senderId: 'usr-priya',
-    senderName: 'Priya Patel',
-    senderRole: 'student',
-    senderCgpa: 9.5,
-    receiverId: 'usr-student-aarav',
-    content: 'Hey Aarav! Saw your score on the Frontend assessment, 36/40 is phenomenal! Did you use the official React 19 docs or any specific repo for preparation?',
-    timestamp: '2026-10-29T14:22:00Z',
-  },
-  {
-    id: 'msg-2',
-    senderId: 'usr-student-aarav',
-    senderName: 'Aarav Sharma',
-    senderRole: 'student',
-    senderCgpa: 8.8,
-    receiverId: 'usr-priya',
-    content: 'Thanks Priya! Mostly the React deep-dive notes from the platform resources and building small prototypes for useActionState. Congrats on your #1 rank on the leaderboard by the way!',
-    timestamp: '2026-10-29T14:25:30Z',
-  },
-  {
-    id: 'msg-3',
-    senderId: 'usr-priya',
-    senderName: 'Priya Patel',
-    senderRole: 'student',
-    senderCgpa: 9.5,
-    receiverId: 'usr-student-aarav',
-    content: 'Thank you! If you ever want to team up on the Vector Search pipeline task, let me know. We could build something really cool together.',
-    timestamp: '2026-10-29T14:28:10Z',
-  },
-  {
-    id: 'msg-4',
-    senderId: 'usr-rahul',
-    senderName: 'Rahul Verma',
-    senderRole: 'student',
-    senderCgpa: 9.1,
-    receiverId: 'usr-student-aarav',
-    content: 'Aarav, do you have any quick tips for the QuickSort partition questions in the Algorithms assessment? Got tripped up on the naive pivot scenario.',
-    timestamp: '2026-10-28T09:15:00Z',
-  },
-  {
-    id: 'msg-5',
-    senderId: 'usr-student-aarav',
-    senderName: 'Aarav Sharma',
-    senderRole: 'student',
-    senderCgpa: 8.8,
-    receiverId: 'usr-rahul',
-    content: 'Hey Rahul! Check the explanation on question 1: when a naive pivot is picked on already sorted lists, it creates an unbalanced partition (n and 0 elements), degrading to O(n^2). Use randomized or median-of-three pivot!',
-    timestamp: '2026-10-28T09:18:40Z',
-  },
-];
+// Peer Messages (initialized empty, real peer messaging populated dynamically)
+let peerMessages: PeerMessage[] = [];
 
-// Shared Resources
+// Shared Resources curated by Platform Engineering & Academic Teams
 let sharedResources: SharedResource[] = [
   {
     id: 'res-1',
     title: 'React 19 & Concurrent Rendering Cheatsheet',
     category: 'Frontend Engineering',
-    authorName: 'Aarav Sharma',
-    authorRole: 'Student (8.8 CGPA)',
+    authorName: 'Frontend Working Group',
+    authorRole: 'Platform Resource',
     description: 'Comprehensive 8-page summary covering useTransition, Server Actions, useOptimistic, and memoization rules with practical code patterns.',
     linkUrl: 'https://github.com/career-genius/react19-cheatsheet',
     fileType: 'CheatSheet',
     upvotes: 42,
     date: '2026-10-26',
-    userUpvoted: true,
+    userUpvoted: false,
   },
   {
     id: 'res-2',
     title: 'System Design Interview Roadmap (FAANG Ready)',
     category: 'Backend Systems',
-    authorName: 'Rahul Verma',
-    authorRole: 'Student (9.1 CGPA)',
+    authorName: 'Distributed Systems Lab',
+    authorRole: 'Platform Resource',
     description: 'Curated architectural templates for URL shorteners, distributed rate-limiters, notification engines, and cache invalidation strategies.',
     linkUrl: 'https://github.com/career-genius/system-design-roadmap',
     fileType: 'GitHub',
@@ -1023,21 +752,21 @@ let sharedResources: SharedResource[] = [
     id: 'res-3',
     title: 'PostgreSQL Index Optimization & Execution Plan Analysis',
     category: 'Databases',
-    authorName: 'Prof. Neha Gupta',
-    authorRole: 'Faculty Advisor',
+    authorName: 'Database Architecture Team',
+    authorRole: 'Curriculum Resource',
     description: 'In-depth laboratory guide demonstrating how to interpret EXPLAIN (ANALYZE, BUFFERS) and design partial and multi-column B-Tree indexes.',
     linkUrl: 'https://campus.edu/resources/postgres-optimization.pdf',
     fileType: 'PDF',
     upvotes: 95,
     date: '2026-10-20',
-    userUpvoted: true,
+    userUpvoted: false,
   },
   {
     id: 'res-4',
     title: 'Modern AI & RAG Pipeline Architecture Notes',
     category: 'Machine Learning',
-    authorName: 'Priya Patel',
-    authorRole: 'Student (9.5 CGPA)',
+    authorName: 'Applied AI Research Lab',
+    authorRole: 'Platform Resource',
     description: 'Step-by-step implementation guide for vector search, cosine distance calculations, chunking strategies, and Gemini API structured output.',
     linkUrl: 'https://github.com/career-genius/rag-production-guide',
     fileType: 'Notes',
@@ -1056,14 +785,20 @@ app.get('/api/user', (req: Request, res: Response) => {
   res.json({ success: true, user: currentUser });
 });
 
+app.post('/api/user/logout', (req: Request, res: Response) => {
+  currentUser = null;
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Sync Google or Email Authenticated User
 app.post('/api/user/sync-google', (req: Request, res: Response) => {
-  const { id, name, email, photoURL, cgpa, areaOfInterest, college, graduationYear } = req.body;
+  const { id, name, email, cgpa, areaOfInterest, college, graduationYear } = req.body;
   if (!id || !email) {
     return res.status(400).json({ success: false, error: 'User ID and email are required.' });
   }
 
-  const isAdminEmail = String(email).toLowerCase() === 'uutkarsh319@gmail.com';
-  const assignedRole = isAdminEmail ? 'admin' : 'student';
+  const isOwnerEmail = String(email).toLowerCase() === 'uutkarsh319@gmail.com';
+  const assignedRole: 'student' | 'admin' = isOwnerEmail ? 'admin' : 'student';
 
   const existingStudent = cohortStudents.find((s) => s.id === id || s.email.toLowerCase() === String(email).toLowerCase());
 
@@ -1103,7 +838,9 @@ app.post('/api/user/sync-google', (req: Request, res: Response) => {
       bookmarkedResourceIds: [],
       badges: [],
     };
-    cohortStudents.push(newStudent);
+    if (assignedRole === 'student') {
+      cohortStudents.push(newStudent);
+    }
     currentUser = { ...newStudent };
   }
 
@@ -1111,6 +848,7 @@ app.post('/api/user/sync-google', (req: Request, res: Response) => {
   res.json({ success: true, user: currentUser, message: `Session synced for ${currentUser.email}` });
 });
 
+// Admin & Website Owner Endpoints
 app.get('/api/admin/students', (req: Request, res: Response) => {
   // Return all registered students formatted for the admin studio directory
   res.json({
@@ -1136,7 +874,45 @@ app.get('/api/admin/students', (req: Request, res: Response) => {
   });
 });
 
+// Owner endpoint to edit student details
+app.post('/api/admin/student/update', (req: Request, res: Response) => {
+  const { id, name, cgpa, areaOfInterest, college, points, graduationYear } = req.body;
+  const student = cohortStudents.find((s) => s.id === id);
+  if (!student) {
+    return res.status(404).json({ success: false, error: 'Student not found in registry.' });
+  }
+  if (name) student.name = String(name).trim();
+  if (typeof cgpa === 'number' && !isNaN(cgpa)) {
+    student.cgpa = Math.min(10, Math.max(0, Number(cgpa.toFixed(2))));
+  }
+  if (areaOfInterest) student.areaOfInterest = String(areaOfInterest).trim();
+  if (college) student.college = String(college).trim();
+  if (typeof points === 'number' && !isNaN(points)) {
+    student.points = Math.max(0, Math.round(points));
+  }
+  if (graduationYear) student.graduationYear = Number(graduationYear);
+
+  recalculateCohortRanks();
+  res.json({ success: true, student, message: 'Student details updated successfully by website owner.' });
+});
+
+// Owner endpoint to delete a student record
+app.post('/api/admin/student/delete', (req: Request, res: Response) => {
+  const { id } = req.body;
+  const idx = cohortStudents.findIndex((s) => s.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ success: false, error: 'Student not found in registry.' });
+  }
+  cohortStudents.splice(idx, 1);
+  recalculateCohortRanks();
+  res.json({ success: true, message: 'Student deleted from registry successfully.' });
+});
+
 app.post('/api/user/update-profile', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Unauthorized. Please sign in.' });
+  }
+
   const { name, cgpa, areaOfInterest, college, graduationYear } = req.body;
   
   if (name) currentUser.name = String(name).trim();
@@ -1155,17 +931,32 @@ app.post('/api/user/update-profile', (req: Request, res: Response) => {
 
 app.post('/api/user/switch-role', (req: Request, res: Response) => {
   const { role } = req.body;
-  if (role === 'student' || role === 'teacher' || role === 'admin') {
-    currentUser.role = role;
-    if (role === 'teacher') {
-      currentUser.name = 'Prof. Neha Gupta';
-      currentUser.email = 'neha.gupta@faculty.edu';
-    } else if (role === 'admin') {
-      currentUser.name = 'Admin Controller';
-      currentUser.email = 'uutkarsh319@gmail.com';
+  if (role === 'student' || role === 'admin') {
+    if (!currentUser) {
+      currentUser = {
+        id: role === 'admin' ? 'usr-admin-owner' : 'usr-student',
+        name: role === 'admin' ? 'Utkarsh (Owner)' : 'Student Candidate',
+        email: role === 'admin' ? 'uutkarsh319@gmail.com' : 'student@campus.edu',
+        role,
+        cgpa: 9.2,
+        areaOfInterest: 'Full Stack Web Architect',
+        college: 'National Institute of Technology',
+        graduationYear: 2026,
+        points: 1500,
+        rank: 1,
+        weeklyActivity: [],
+        completedCourseIds: [],
+        completedTaskIds: [],
+        assessmentScores: [],
+        bookmarkedResourceIds: [],
+        badges: [],
+      };
     } else {
-      currentUser.name = 'Aarav Sharma';
-      currentUser.email = 'aarav.sharma@campus.edu';
+      currentUser.role = role;
+      if (role === 'admin') {
+        currentUser.name = 'Utkarsh (Owner)';
+        currentUser.email = 'uutkarsh319@gmail.com';
+      }
     }
     return res.json({ success: true, user: currentUser, message: `Switched active role to ${role}` });
   }
@@ -1216,33 +1007,35 @@ app.post('/api/assessments/submit', (req: Request, res: Response) => {
   const earnedPoints = Math.round((correctCount / totalQuestions) * 250);
 
   // Update user score
-  const existingIdx = currentUser.assessmentScores.findIndex((s) => s.assessmentId === assessmentId);
-  const record = {
-    assessmentId,
-    subjectTitle: assessment.subjectTitle,
-    score: earnedScore,
-    maxScore: assessment.totalMarks,
-    percentage,
-    date: new Date().toISOString().split('T')[0],
-  };
+  if (currentUser) {
+    const existingIdx = currentUser.assessmentScores.findIndex((s) => s.assessmentId === assessmentId);
+    const record = {
+      assessmentId,
+      subjectTitle: assessment.subjectTitle,
+      score: earnedScore,
+      maxScore: assessment.totalMarks,
+      percentage,
+      date: new Date().toISOString().split('T')[0],
+    };
 
-  if (existingIdx >= 0) {
-    currentUser.assessmentScores[existingIdx] = record;
-  } else {
-    currentUser.assessmentScores.push(record);
+    if (existingIdx >= 0) {
+      currentUser.assessmentScores[existingIdx] = record;
+    } else {
+      currentUser.assessmentScores.push(record);
+    }
+
+    currentUser.points += earnedPoints;
+
+    // Update today's weekly activity
+    const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+    const dayAct = currentUser.weeklyActivity.find((w) => w.day === todayName);
+    if (dayAct) {
+      dayAct.score += earnedPoints;
+      dayAct.studyHours += 0.5;
+    }
+
+    recalculateCohortRanks();
   }
-
-  currentUser.points += earnedPoints;
-
-  // Update today's weekly activity
-  const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
-  const dayAct = currentUser.weeklyActivity.find((w) => w.day === todayName);
-  if (dayAct) {
-    dayAct.score += earnedPoints;
-    dayAct.studyHours += 0.5;
-  }
-
-  recalculateCohortRanks();
 
   res.json({
     success: true,
@@ -1252,8 +1045,8 @@ app.post('/api/assessments/submit', (req: Request, res: Response) => {
     correctCount,
     totalQuestions,
     earnedPoints,
-    newTotalPoints: currentUser.points,
-    newRank: currentUser.rank,
+    newTotalPoints: currentUser ? currentUser.points : earnedPoints,
+    newRank: currentUser ? currentUser.rank : null,
     questionResults,
   });
 });
@@ -1263,7 +1056,7 @@ app.get('/api/courses', (req: Request, res: Response) => {
   res.json({
     success: true,
     courses,
-    completedCourseIds: currentUser.completedCourseIds,
+    completedCourseIds: currentUser ? currentUser.completedCourseIds : [],
   });
 });
 
@@ -1272,6 +1065,10 @@ app.post('/api/courses/complete', (req: Request, res: Response) => {
   const course = courses.find((c) => c.id === courseId);
   if (!course) {
     return res.status(404).json({ success: false, error: 'Course not found.' });
+  }
+
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Please sign in to complete courses.' });
   }
 
   if (!currentUser.completedCourseIds.includes(courseId)) {
@@ -1294,7 +1091,7 @@ app.get('/api/tasks', (req: Request, res: Response) => {
   res.json({
     success: true,
     tasks,
-    completedTaskIds: currentUser.completedTaskIds,
+    completedTaskIds: currentUser ? currentUser.completedTaskIds : [],
   });
 });
 
@@ -1303,6 +1100,10 @@ app.post('/api/tasks/toggle', (req: Request, res: Response) => {
   const task = tasks.find((t) => t.id === taskId);
   if (!task) {
     return res.status(404).json({ success: false, error: 'Task not found.' });
+  }
+
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Please sign in to update tasks.' });
   }
 
   const isCompleted = currentUser.completedTaskIds.includes(taskId);
@@ -1354,15 +1155,23 @@ app.get('/api/leaderboard', (req: Request, res: Response) => {
   res.json({
     success: true,
     leaderboard: ranked,
-    currentUserRank: currentUser.rank,
-    currentUserPoints: currentUser.points,
-    totalStudents: 1280, // Platform registered students
+    currentUserRank: currentUser ? currentUser.rank : null,
+    totalStudents: cohortStudents.length, // Real registered students
   });
 });
 
 // 6. Teacher Feedback Dashboard Endpoints
 app.get('/api/feedback', (req: Request, res: Response) => {
-  // If teacher, return feedback for all students; if student, return their personalized feedback
+  // If unauthenticated guest, return sample feedback
+  if (!currentUser) {
+    return res.json({
+      success: true,
+      feedback: teacherFeedbacks.slice(0, 2),
+      allStudents: [],
+    });
+  }
+
+  // If teacher or admin, return feedback for all students and student roster
   if (currentUser.role === 'teacher' || currentUser.role === 'admin') {
     return res.json({
       success: true,
@@ -1379,7 +1188,7 @@ app.get('/api/feedback', (req: Request, res: Response) => {
   }
 
   // Student personalized feedback
-  const studentFeedbacks = teacherFeedbacks.filter((fb) => fb.studentId === currentUser.id);
+  const studentFeedbacks = teacherFeedbacks.filter((fb) => fb.studentId === currentUser!.id);
   res.json({
     success: true,
     feedback: studentFeedbacks,
@@ -1387,6 +1196,10 @@ app.get('/api/feedback', (req: Request, res: Response) => {
 });
 
 app.post('/api/feedback', (req: Request, res: Response) => {
+  if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) {
+    return res.status(403).json({ success: false, error: 'Only verified teachers and administrators can submit evaluations.' });
+  }
+
   const { studentId, subject, ratings, keyStrengths, areasOfImprovement, mentorVerdict, actionablePlan } = req.body;
 
   const targetStudent = cohortStudents.find((s) => s.id === studentId);
@@ -1420,16 +1233,24 @@ app.post('/api/feedback', (req: Request, res: Response) => {
 
 // 7. Peer-to-Peer Messaging Endpoints
 app.get('/api/messages', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.json({
+      success: true,
+      peers: [],
+      activeThread: [],
+    });
+  }
+
   const otherUserId = (req.query.peerId as string) || '';
 
   // Return peers list with recent chat snippet
   const peers = cohortStudents
-    .filter((s) => s.id !== currentUser.id)
+    .filter((s) => s.id !== currentUser!.id)
     .map((peer) => {
       const thread = peerMessages.filter(
         (m) =>
-          (m.senderId === currentUser.id && m.receiverId === peer.id) ||
-          (m.senderId === peer.id && m.receiverId === currentUser.id)
+          (m.senderId === currentUser!.id && m.receiverId === peer.id) ||
+          (m.senderId === peer.id && m.receiverId === currentUser!.id)
       );
       const lastMsg = thread[thread.length - 1];
       return {
@@ -1447,15 +1268,15 @@ app.get('/api/messages', (req: Request, res: Response) => {
   if (otherUserId) {
     activeThread = peerMessages.filter(
       (m) =>
-        (m.senderId === currentUser.id && m.receiverId === otherUserId) ||
-        (m.senderId === otherUserId && m.receiverId === currentUser.id)
+        (m.senderId === currentUser!.id && m.receiverId === otherUserId) ||
+        (m.senderId === otherUserId && m.receiverId === currentUser!.id)
     );
   } else if (peers.length > 0) {
     const defaultPeer = peers[0];
     activeThread = peerMessages.filter(
       (m) =>
-        (m.senderId === currentUser.id && m.receiverId === defaultPeer.id) ||
-        (m.senderId === defaultPeer.id && m.receiverId === currentUser.id)
+        (m.senderId === currentUser!.id && m.receiverId === defaultPeer.id) ||
+        (m.senderId === defaultPeer.id && m.receiverId === currentUser!.id)
     );
   }
 
@@ -1467,6 +1288,10 @@ app.get('/api/messages', (req: Request, res: Response) => {
 });
 
 app.post('/api/messages', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Please sign in to send messages.' });
+  }
+
   const { receiverId, content } = req.body;
   if (!receiverId || !content || !String(content).trim()) {
     return res.status(400).json({ success: false, error: 'Recipient and message content are required.' });
@@ -1497,7 +1322,7 @@ app.post('/api/messages', (req: Request, res: Response) => {
 app.get('/api/resources', (req: Request, res: Response) => {
   const category = (req.query.category as string) || 'all';
   const bookmarkedOnly = req.query.bookmarked === 'true';
-  const userBookmarks = currentUser.bookmarkedResourceIds || [];
+  const userBookmarks = currentUser ? currentUser.bookmarkedResourceIds || [] : [];
 
   let list = sharedResources.map((r) => ({
     ...r,
@@ -1516,6 +1341,10 @@ app.get('/api/resources', (req: Request, res: Response) => {
 });
 
 app.post('/api/resources', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Please sign in to share resources.' });
+  }
+
   const { title, category, description, linkUrl, fileType } = req.body;
 
   if (!title || !description) {
@@ -1562,6 +1391,10 @@ app.post('/api/resources/:id/upvote', (req: Request, res: Response) => {
 });
 
 app.post('/api/resources/:id/bookmark', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Please sign in to bookmark resources.' });
+  }
+
   const resItem = sharedResources.find((r) => r.id === req.params.id);
   if (!resItem) {
     return res.status(404).json({ success: false, error: 'Resource not found.' });
@@ -1686,18 +1519,20 @@ app.post('/api/ai/career-advice', async (req: Request, res: Response) => {
   const { query, studentContext } = req.body;
 
   const promptQuery = query || 'What should be my 30-day roadmap based on my CGPA and target domain?';
-  const cgpa = studentContext?.cgpa ?? currentUser.cgpa;
-  const area = studentContext?.areaOfInterest ?? currentUser.areaOfInterest;
-  const recentScores = currentUser.assessmentScores
-    .map((s) => `${s.subjectTitle}: ${s.score}/${s.maxScore} (${s.percentage}%)`)
-    .join(', ');
+  const cgpa = studentContext?.cgpa ?? (currentUser ? currentUser.cgpa : 9.0);
+  const area = studentContext?.areaOfInterest ?? (currentUser ? currentUser.areaOfInterest : 'Software Developer');
+  const recentScores = currentUser
+    ? currentUser.assessmentScores
+        .map((s) => `${s.subjectTitle}: ${s.score}/${s.maxScore} (${s.percentage}%)`)
+        .join(', ')
+    : 'None yet';
 
   const systemPrompt = `You are Career Genius AI, an elite university career mentor and technical hiring expert.
 The student has:
 - Current CGPA: ${cgpa} / 10.0
 - Target Role / Area of Interest: ${area}
 - Assessments completed: ${recentScores || 'None yet'}
-- Completed Tasks: ${currentUser.completedTaskIds.length} tasks
+- Completed Tasks: ${currentUser ? currentUser.completedTaskIds.length : 0} tasks
 
 Provide a structured, highly actionable, concise response with:
 1. Executive Career Assessment (Honest appraisal of their CGPA and role alignment)
@@ -1778,15 +1613,17 @@ function recalculateCohortRanks() {
     });
   });
 
-  currentUser.badges = evaluateStudentBadges({
-    rank: currentUser.rank,
-    totalStudents: 1280,
-    cgpa: currentUser.cgpa,
-    completedCourseIds: currentUser.completedCourseIds,
-    completedTaskIds: currentUser.completedTaskIds,
-    assessmentScores: currentUser.assessmentScores,
-    sharedResourcesCount: sharedResources.filter((r) => r.authorName.includes(currentUser.name)).length,
-  });
+  if (currentUser) {
+    currentUser.badges = evaluateStudentBadges({
+      rank: currentUser.rank,
+      totalStudents: 1280,
+      cgpa: currentUser.cgpa,
+      completedCourseIds: currentUser.completedCourseIds,
+      completedTaskIds: currentUser.completedTaskIds,
+      assessmentScores: currentUser.assessmentScores,
+      sharedResourcesCount: sharedResources.filter((r) => r.authorName.includes(currentUser!.name)).length,
+    });
+  }
 }
 
 // Initial evaluation

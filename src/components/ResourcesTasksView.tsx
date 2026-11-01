@@ -22,7 +22,7 @@ import {
 interface ResourcesTasksViewProps {
   tasks: CareerTask[];
   resources: SharedResource[];
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   onToggleTask: (taskId: string) => Promise<void>;
   onShareResource: (resource: {
     title: string;
@@ -58,7 +58,7 @@ export const ResourcesTasksView: React.FC<ResourcesTasksViewProps> = ({
   const [resDescription, setResDescription] = useState('');
 
   // User bookmark lookup
-  const userBookmarkIds = currentUser.bookmarkedResourceIds || [];
+  const userBookmarkIds = currentUser?.bookmarkedResourceIds || [];
   const isResourceBookmarked = (res: SharedResource) =>
     res.isBookmarked ?? userBookmarkIds.includes(res.id);
 
@@ -240,7 +240,7 @@ export const ResourcesTasksView: React.FC<ResourcesTasksViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Milestone Tasks ({currentUser.completedTaskIds.length}/{tasks.length})
+            Milestone Tasks ({currentUser ? currentUser.completedTaskIds.length : 0}/{tasks.length})
           </button>
           <button
             onClick={() => setActiveSection('resources')}
@@ -285,17 +285,17 @@ export const ResourcesTasksView: React.FC<ResourcesTasksViewProps> = ({
             <div className="text-center sm:text-right shrink-0 p-4 bg-slate-800 rounded-xl border border-slate-700">
               <span className="text-xs text-slate-400 block font-medium">Completed Progress</span>
               <div className="text-2xl font-extrabold text-white mt-0.5 tabular-nums">
-                {currentUser.completedTaskIds.length} / {tasks.length}
+                {currentUser ? currentUser.completedTaskIds.length : 0} / {tasks.length}
               </div>
               <span className="text-[11px] text-emerald-400 font-medium">
-                {Math.round((currentUser.completedTaskIds.length / tasks.length) * 100)}% Verified
+                {tasks.length > 0 ? Math.round(((currentUser?.completedTaskIds.length || 0) / tasks.length) * 100) : 0}% Verified
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {tasks.map((task) => {
-              const isDone = currentUser.completedTaskIds.includes(task.id);
+              const isDone = currentUser ? currentUser.completedTaskIds.includes(task.id) : false;
 
               return (
                 <div

@@ -3,10 +3,16 @@
  */
 
 export const BOOTSTRAP_ADMIN_EMAIL = 'uutkarsh319@gmail.com';
+export const LIVE_PUBLIC_URL = 'https://ais-pre-au3avitokhba6nliudiuk7-693060557594.asia-east1.run.app';
+
+export function isOwner(user: { email?: string | null; role?: string } | null | undefined): boolean {
+  if (!user || !user.email) return false;
+  return user.email.trim().toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase();
+}
 
 export function isUserAdmin(user: { email?: string | null; role?: string } | null | undefined): boolean {
   if (!user) return false;
-  if (user.email && user.email.trim().toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase()) {
+  if (isOwner(user)) {
     return true;
   }
   return user.role === 'admin';

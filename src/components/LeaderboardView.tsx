@@ -11,7 +11,7 @@ import {
 
 interface LeaderboardViewProps {
   students: LeaderboardStudent[];
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   onSelectPeerForMessage: (peerId: string) => void;
 }
 
@@ -91,15 +91,27 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         </div>
 
         {/* Current user rank summary pill */}
-        <div className="bg-slate-900 text-white px-4 py-3 rounded-xl flex items-center gap-3 shrink-0 shadow-xs">
-          <Trophy className="w-5 h-5 text-amber-400" />
-          <div>
-            <span className="text-[11px] text-slate-300 block font-medium">Your Current Rank</span>
-            <div className="text-sm font-bold tabular-nums">
-              Rank #{currentUser.rank} · {currentUser.points} XP
+        {currentUser ? (
+          <div className="bg-slate-900 text-white px-4 py-3 rounded-xl flex items-center gap-3 shrink-0 shadow-xs">
+            <Trophy className="w-5 h-5 text-amber-400" />
+            <div>
+              <span className="text-[11px] text-slate-300 block font-medium">Your Current Rank</span>
+              <div className="text-sm font-bold tabular-nums">
+                Rank #{currentUser.rank} · {currentUser.points} XP
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-slate-900 text-white px-4 py-3 rounded-xl flex items-center gap-3 shrink-0 shadow-xs">
+            <Trophy className="w-5 h-5 text-amber-400" />
+            <div>
+              <span className="text-[11px] text-slate-300 block font-medium">Guest Explorer</span>
+              <div className="text-xs font-semibold text-emerald-400">
+                Sign in to join ranking
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -150,84 +162,108 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredStudents.map((student, idx) => {
-                const isCurrent = student.id === currentUser.id;
-                const displayRank = idx + 1;
-
-                return (
-                  <tr
-                    key={student.id}
-                    className={`transition-colors ${
-                      isCurrent ? 'bg-amber-50/60 font-medium' : 'hover:bg-slate-50/80'
-                    }`}
-                  >
-                    {/* Rank */}
-                    <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center">
-                        {getRankBadge(displayRank)}
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 px-4 text-center">
+                    <div className="max-w-md mx-auto space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+                        <Trophy className="w-6 h-6" />
                       </div>
-                    </td>
+                      <h3 className="font-bold text-slate-900 text-base">
+                        No Registered Students on Leaderboard Yet
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        All fake mock profiles have been cleared. When real students register and take their first diagnostic assessment, their scores will rank dynamically here.
+                      </p>
+                      <div className="pt-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Be the first student to register and claim Rank #1!</span>
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredStudents.map((student, idx) => {
+                  const isCurrent = currentUser !== null && student.id === currentUser.id;
+                  const displayRank = idx + 1;
 
-                    {/* Student Name & College */}
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                          {student.name.charAt(0)}
+                  return (
+                    <tr
+                      key={student.id}
+                      className={`transition-colors ${
+                        isCurrent ? 'bg-amber-50/60 font-medium' : 'hover:bg-slate-50/80'
+                      }`}
+                    >
+                      {/* Rank */}
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex items-center justify-center">
+                          {getRankBadge(displayRank)}
                         </div>
-                        <div>
-                          <div className="font-bold text-slate-900 flex items-center gap-2">
-                            <span>{student.name}</span>
-                            {isCurrent && (
-                              <span className="text-[10px] bg-slate-900 text-white px-1.5 py-0.5 rounded-sm font-semibold">
-                                You
-                              </span>
-                            )}
+                      </td>
+
+                      {/* Student Name & College */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                            {student.name.charAt(0)}
                           </div>
-                          <span className="text-[11px] text-slate-500 block">{student.college}</span>
+                          <div>
+                            <div className="font-bold text-slate-900 flex items-center gap-2">
+                              <span>{student.name}</span>
+                              {isCurrent && (
+                                <span className="text-[10px] bg-slate-900 text-white px-1.5 py-0.5 rounded-sm font-semibold">
+                                  You
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-500 block">{student.college}</span>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Area of Interest */}
-                    <td className="py-4 px-4">
-                      <span className="font-semibold text-slate-800">{student.areaOfInterest}</span>
-                    </td>
+                      {/* Area of Interest */}
+                      <td className="py-4 px-4">
+                        <span className="font-semibold text-slate-800">{student.areaOfInterest}</span>
+                      </td>
 
-                    {/* CGPA */}
-                    <td className="py-4 px-4 tabular-nums font-semibold text-slate-800">
-                      {student.cgpa.toFixed(2)}
-                      <span className="text-slate-400 text-[10px] ml-0.5 font-normal">/10</span>
-                    </td>
+                      {/* CGPA */}
+                      <td className="py-4 px-4 tabular-nums font-semibold text-slate-800">
+                        {student.cgpa.toFixed(2)}
+                        <span className="text-slate-400 text-[10px] ml-0.5 font-normal">/10</span>
+                      </td>
 
-                    {/* Points / XP */}
-                    <td className="py-4 px-4 text-right tabular-nums font-extrabold text-slate-900 text-sm">
-                      {student.points} XP
-                    </td>
+                      {/* Points / XP */}
+                      <td className="py-4 px-4 text-right tabular-nums font-extrabold text-slate-900 text-sm">
+                        {student.points} XP
+                      </td>
 
-                    {/* Milestones */}
-                    <td className="py-4 px-4 text-center">
-                      <span className="text-[11px] text-slate-600">
-                        {student.completedCourseCount} Courses · {student.completedTaskCount} Tasks
-                      </span>
-                    </td>
+                      {/* Milestones */}
+                      <td className="py-4 px-4 text-center">
+                        <span className="text-[11px] text-slate-600">
+                          {student.completedCourseCount} Courses · {student.completedTaskCount} Tasks
+                        </span>
+                      </td>
 
-                    {/* Action */}
-                    <td className="py-4 px-4 text-right">
-                      {!isCurrent ? (
-                        <button
-                          onClick={() => onSelectPeerForMessage(student.id)}
-                          className="px-3 py-1.5 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
-                        >
-                          <MessageSquare className="w-3 h-3 text-slate-500" />
-                          <span>Message</span>
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 italic">Self</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                      {/* Action */}
+                      <td className="py-4 px-4 text-right">
+                        {!isCurrent ? (
+                          <button
+                            onClick={() => onSelectPeerForMessage(student.id)}
+                            className="px-3 py-1.5 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                          >
+                            <MessageSquare className="w-3 h-3 text-slate-500" />
+                            <span>Message</span>
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Self</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
