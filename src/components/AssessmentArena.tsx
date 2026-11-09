@@ -389,7 +389,7 @@ export const AssessmentArena: React.FC<AssessmentArenaProps> = ({
           Skill Assessments & Rankings
         </h2>
         <p className="text-slate-600 text-sm max-w-2xl mt-1">
-          Take domain-specific timed assessments created by industry architects and university faculty. Your scores directly impact your platform percentile, leaderboard rank, and teacher evaluations.
+          Take domain-specific timed assessments created by industry architects and engineering leads. Your scores directly impact your platform percentile, XP points, and verified leaderboard rank.
         </p>
       </div>
 

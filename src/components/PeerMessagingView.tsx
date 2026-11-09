@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PeerMessage, PeerSummary, UserProfile } from '../types/index.ts';
-import { Send, ArrowLeft, MessageSquare, Check, UserCheck } from 'lucide-react';
+import { Send, ArrowLeft, MessageSquare, Check, BookOpen, Clock } from 'lucide-react';
 
 interface PeerMessagingViewProps {
   peers: PeerSummary[];
@@ -56,13 +56,13 @@ export const PeerMessagingView: React.FC<PeerMessagingViewProps> = ({
       {/* Header */}
       <div className="border-b border-slate-200 pb-5">
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Collaborative Student Network
+          Collaborative Mentorship & Doubt Resolution Network
         </span>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-          Peer-to-Peer Discussion & Mentorship
+          Peer & Faculty Direct Messaging
         </h2>
         <p className="text-slate-600 text-sm mt-1">
-          Exchange technical interview tips, collaborate on practical challenges, and share roadmap insights directly with high-performing students.
+          Message high-performing student peers or reach university faculty mentors directly to ask technical doubts, review code solutions, and get personalized guidance.
         </p>
       </div>
 
@@ -70,19 +70,21 @@ export const PeerMessagingView: React.FC<PeerMessagingViewProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden h-[600px] flex">
         {/* Left Column: Peer Directory List */}
         <div
-          className={`w-full md:w-80 border-r border-slate-200 flex flex-col shrink-0 bg-slate-50/50 ${
+          className={`w-full md:w-84 border-r border-slate-200 flex flex-col shrink-0 bg-slate-50/50 ${
             mobileChatOpen ? 'hidden md:flex' : 'flex'
           }`}
         >
-          <div className="p-4 border-b border-slate-200 bg-white">
+          <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
-              Active Student Peers ({peers.length})
+              Contacts ({peers.length})
             </span>
+            <span className="text-[11px] text-indigo-600 font-semibold">Faculty & Peers</span>
           </div>
 
           <div className="overflow-y-auto divide-y divide-slate-100 flex-1">
             {peers.map((peer) => {
               const isSelected = activePeer?.id === peer.id;
+              const isTeacher = peer.role === 'teacher';
               return (
                 <button
                   key={peer.id}
@@ -91,17 +93,27 @@ export const PeerMessagingView: React.FC<PeerMessagingViewProps> = ({
                     isSelected ? 'bg-white border-l-4 border-slate-900 shadow-xs' : 'hover:bg-slate-100/70'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                    {peer.name.charAt(0)}
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
+                      isTeacher ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-900 text-white'
+                    }`}
+                  >
+                    {isTeacher ? <BookOpen className="w-4 h-4" /> : peer.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-bold text-slate-900 truncate">{peer.name}</span>
-                      <span className="text-[10px] text-slate-500 font-semibold tabular-nums shrink-0">
-                        {peer.cgpa} CGPA
-                      </span>
+                      {isTeacher ? (
+                        <span className="text-[9px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
+                          Faculty
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 font-semibold tabular-nums shrink-0">
+                          {peer.cgpa} CGPA
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[11px] text-indigo-700 font-medium block truncate">
+                    <span className={`text-[11px] font-medium block truncate ${isTeacher ? 'text-indigo-700' : 'text-slate-600'}`}>
                       {peer.areaOfInterest}
                     </span>
                     <p className="text-[11px] text-slate-500 truncate mt-1">
@@ -133,16 +145,26 @@ export const PeerMessagingView: React.FC<PeerMessagingViewProps> = ({
                     <ArrowLeft className="w-5 h-5" />
                   </button>
 
-                  <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                    {activePeer.name.charAt(0)}
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${
+                      activePeer.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-white'
+                    }`}
+                  >
+                    {activePeer.role === 'teacher' ? <BookOpen className="w-4 h-4" /> : activePeer.name.charAt(0)}
                   </div>
 
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-bold text-slate-900">{activePeer.name}</h4>
-                      <span className="text-[10px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded-md">
-                        {activePeer.cgpa} CGPA
-                      </span>
+                      {activePeer.role === 'teacher' ? (
+                        <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-md">
+                          Faculty Mentor
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded-md">
+                          {activePeer.cgpa} CGPA
+                        </span>
+                      )}
                     </div>
                     <span className="text-[11px] text-slate-500 block">
                       {activePeer.areaOfInterest} · {activePeer.college}
@@ -151,7 +173,14 @@ export const PeerMessagingView: React.FC<PeerMessagingViewProps> = ({
                 </div>
 
                 <div className="text-xs text-slate-500 hidden sm:block">
-                  <span className="text-emerald-700 font-medium">● Active for Collaboration</span>
+                  {activePeer.role === 'teacher' ? (
+                    <div className="flex items-center gap-1.5 text-indigo-700 font-medium">
+                      <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Office Hours: {activePeer.officeHours || 'Mon-Thu 2:00 PM - 5:00 PM'}</span>
+                    </div>
+                  ) : (
+                    <span className="text-emerald-700 font-medium">● Active for Collaboration</span>
+                  )}
                 </div>
               </div>
 

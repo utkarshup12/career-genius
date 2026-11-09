@@ -18,6 +18,15 @@ export function isUserAdmin(user: { email?: string | null; role?: string } | nul
   return user.role === 'admin';
 }
 
+export function isTeacher(user: { email?: string | null; role?: string } | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === 'teacher' || isUserAdmin(user);
+}
+
+export function canManageSolutionsAndFeedback(user: { email?: string | null; role?: string } | null | undefined): boolean {
+  return isTeacher(user);
+}
+
 export function canAccessAdminStudio(user: { email?: string | null; role?: string } | null | undefined): boolean {
   return isUserAdmin(user);
 }

@@ -98,6 +98,82 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
   const [cgpaFilter, setCgpaFilter] = useState<'all' | '9plus' | '8plus'>('all');
   const [inspectStudent, setInspectStudent] = useState<RegisteredStudentEntry | null>(null);
 
+  // Student Edit State for Website Owner
+  const [editingStudent, setEditingStudent] = useState<RegisteredStudentEntry | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCgpa, setEditCgpa] = useState<number>(9.0);
+  const [editTrack, setEditTrack] = useState('');
+  const [editCollege, setEditCollege] = useState('');
+  const [editPoints, setEditPoints] = useState<number>(1000);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [actionToast, setActionToast] = useState<string | null>(null);
+
+  const handleOpenEdit = (student: RegisteredStudentEntry) => {
+    setEditingStudent(student);
+    setEditName(student.name);
+    setEditCgpa(student.cgpa);
+    setEditTrack(student.areaOfInterest);
+    setEditCollege(student.college);
+    setEditPoints(student.points);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch('/api/admin/student/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingStudent.id,
+          name: editName,
+          cgpa: editCgpa,
+          areaOfInterest: editTrack,
+          college: editCollege,
+          points: editPoints,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionToast('Student details updated successfully by website owner');
+        setEditingStudent(null);
+        loadRegisteredStudents();
+        setTimeout(() => setActionToast(null), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const [studentToDelete, setStudentToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const executeDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/admin/student/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: studentToDelete.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionToast(`Student "${studentToDelete.name}" removed from registry.`);
+        setStudentToDelete(null);
+        loadRegisteredStudents();
+        setTimeout(() => setActionToast(null), 3500);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Add question state
   const [targetSubjectId, setTargetSubjectId] = useState(subjects[0]?.id || 'subj-fe');
   const [questionText, setQuestionText] = useState('');
@@ -293,6 +369,22 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
 
   return (
     <div className="space-y-8 pb-12">
+      {/* Action Success Notification Toast */}
+      {actionToast && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5 text-xs font-semibold">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{actionToast}</span>
+          </div>
+          <button
+            onClick={() => setActionToast(null)}
+            className="text-emerald-700 hover:text-emerald-900 p-1 rounded-lg"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
@@ -500,7 +592,17 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredStudents.length === 0 ? (
+                  {registeredStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-14 text-center text-slate-500">
+                        <Users className="w-9 h-9 text-slate-300 mx-auto mb-2.5" />
+                        <p className="font-semibold text-sm text-slate-800">No registered students in directory yet</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                          When students sign up or log in with Google, their verified profiles, CGPA, and career tracks will dynamically populate here.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : filteredStudents.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                         <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -594,12 +696,28 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
 
                           {/* Action */}
                           <td className="px-4 py-4 text-right">
-                            <button
-                              onClick={() => setInspectStudent(student)}
-                              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-semibold transition-colors"
-                            >
-                              View Dossier
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setInspectStudent(student)}
+                                className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-semibold transition-colors"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => handleOpenEdit(student)}
+                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
+                                title="Edit Student Details"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setStudentToDelete({ id: student.id, name: student.name })}
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-semibold transition-colors"
+                                title="Delete Student"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -729,9 +847,149 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
               <button
                 onClick={() => setInspectStudent(null)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs"
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs cursor-pointer"
               >
                 Close Dossier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT STUDENT MODAL (OWNER PRIVILEGE) */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600/30 text-indigo-400 flex items-center justify-center">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Edit Student Profile</h3>
+                  <p className="text-[11px] text-slate-300">Website Owner Exclusive Control</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingStudent(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Student Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Academic CGPA (0 - 10)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="10"
+                    required
+                    value={editCgpa}
+                    onChange={(e) => setEditCgpa(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Leaderboard XP Points</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editPoints}
+                    onChange={(e) => setEditPoints(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Career Specialization Track</label>
+                <input
+                  type="text"
+                  required
+                  value={editTrack}
+                  onChange={(e) => setEditTrack(e.target.value)}
+                  placeholder="e.g. Full Stack Developer, AI/ML Engineer"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">College / University</label>
+                <input
+                  type="text"
+                  required
+                  value={editCollege}
+                  onChange={(e) => setEditCollege(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {savingEdit ? 'Saving...' : 'Save Student Details'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {studentToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 text-xs space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-slate-900">Remove Student from Registry?</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Are you sure you want to remove <span className="font-semibold text-slate-900">{studentToDelete.name}</span>? Their profile, assessment progress, and ranking will be permanently deleted.
+              </p>
+            </div>
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                className="w-1/2 py-2.5 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={executeDeleteStudent}
+                className="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {deleting ? 'Removing...' : 'Yes, Remove'}
               </button>
             </div>
           </div>

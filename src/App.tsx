@@ -9,24 +9,24 @@ import {
   Assessment,
   Course,
   CareerTask,
-  TeacherFeedback,
   PeerMessage,
   PeerSummary,
   SharedResource,
   LeaderboardStudent,
   Subject,
   UserRole,
+  TeacherFeedback,
 } from './types/index.ts';
 import { Header } from './components/Header.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
 import { AssessmentArena } from './components/AssessmentArena.tsx';
 import { CoursesView } from './components/CoursesView.tsx';
 import { LeaderboardView } from './components/LeaderboardView.tsx';
-import { TeacherFeedbackView } from './components/TeacherFeedbackView.tsx';
 import { PeerMessagingView } from './components/PeerMessagingView.tsx';
 import { ResourcesTasksView } from './components/ResourcesTasksView.tsx';
 import { AdminStudioView } from './components/AdminStudioView.tsx';
 import { CareerRoadmapView } from './components/CareerRoadmapView.tsx';
+import { TeacherFeedbackView } from './components/TeacherFeedbackView.tsx';
 import { AiMentorModal } from './components/AiMentorModal.tsx';
 import { LoginPage } from './components/LoginPage.tsx';
 import { GuestLandingView } from './components/GuestLandingView.tsx';
@@ -39,8 +39,9 @@ import {
   db,
   doc,
   getDoc,
+  setDoc,
 } from './firebase.ts';
-import { Sparkles, CheckCircle2, Lock, X, School } from 'lucide-react';
+import { Sparkles, CheckCircle2, Lock, X } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -50,15 +51,15 @@ export default function App() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [tasks, setTasks] = useState<CareerTask[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardStudent[]>([]);
-  const [feedbacks, setFeedbacks] = useState<TeacherFeedback[]>([]);
   const [cohortStudents, setCohortStudents] = useState<any[]>([]);
   const [peers, setPeers] = useState<PeerSummary[]>([]);
   const [activeThread, setActiveThread] = useState<PeerMessage[]>([]);
   const [selectedPeerId, setSelectedPeerId] = useState<string>('');
   const [resources, setResources] = useState<SharedResource[]>([]);
+  const [feedbacks, setFeedbacks] = useState<TeacherFeedback[]>([]);
   const [aiMentorOpen, setAiMentorOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [loginInitialRole, setLoginInitialRole] = useState<'student' | 'teacher'>('student');
+  const [loginInitialRole, setLoginInitialRole] = useState<'student' | 'teacher' | 'admin'>('student');
   const [notification, setNotification] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -110,6 +111,7 @@ export default function App() {
               bookmarkedResourceIds: data.bookmarkedResourceIds || [],
               assessmentScores: data.assessmentScores || [],
               badges: data.badges || [],
+              photoURL: data.photoURL || firebaseUser.photoURL || '',
             };
 
             setCurrentUser(updatedProfile);
@@ -133,16 +135,17 @@ export default function App() {
   // Load initial data from backend
   const loadAllData = async () => {
     try {
-      const [uRes, sRes, aRes, cRes, tRes, lRes, fRes, mRes, rRes] = await Promise.all([
+      const [uRes, sRes, aRes, cRes, tRes, lRes, mRes, rRes, fbRes, cohRes] = await Promise.all([
         fetch('/api/user').then((r) => r.json()),
         fetch('/api/subjects').then((r) => r.json()),
         fetch('/api/assessments').then((r) => r.json()),
         fetch('/api/courses').then((r) => r.json()),
         fetch('/api/tasks').then((r) => r.json()),
         fetch('/api/leaderboard').then((r) => r.json()),
-        fetch('/api/feedback').then((r) => r.json()),
         fetch('/api/messages').then((r) => r.json()),
         fetch('/api/resources').then((r) => r.json()),
+        fetch('/api/feedback').then((r) => r.json()).catch(() => ({ success: false })),
+        fetch('/api/cohort/students').then((r) => r.json()).catch(() => ({ success: false })),
       ]);
 
       if (uRes.success) setCurrentUser(uRes.user);
@@ -151,10 +154,6 @@ export default function App() {
       if (cRes.success) setCourses(cRes.courses);
       if (tRes.success) setTasks(tRes.tasks);
       if (lRes.success) setLeaderboard(lRes.leaderboard);
-      if (fRes.success) {
-        setFeedbacks(fRes.feedback);
-        if (fRes.allStudents) setCohortStudents(fRes.allStudents);
-      }
       if (mRes.success) {
         setPeers(mRes.peers);
         setActiveThread(mRes.activeThread);
@@ -163,6 +162,8 @@ export default function App() {
         }
       }
       if (rRes.success) setResources(rRes.resources);
+      if (fbRes.success) setFeedbacks(fbRes.feedback);
+      if (cohRes.success) setCohortStudents(cohRes.students);
     } catch (err) {
       console.error('Failed to load platform data:', err);
     } finally {
@@ -180,12 +181,8 @@ export default function App() {
     setLoginModalOpen(false);
     triggerNotification(`Authenticated as ${userProfile.name} (${userProfile.role.toUpperCase()})`);
 
-    // Reload cohort & feedback data
-    fetch('/api/leaderboard')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setLeaderboard(data.leaderboard);
-      });
+    // Reload all dynamic user data including messages, leaderboard, and feedbacks
+    loadAllData();
   };
 
   // Handle Sign Out
@@ -216,12 +213,6 @@ export default function App() {
         if (role !== 'admin' && activeTab === 'admin') {
           setActiveTab('dashboard');
         }
-        // Reload feedback since role changes what is visible
-        const fRes = await fetch('/api/feedback').then((r) => r.json());
-        if (fRes.success) {
-          setFeedbacks(fRes.feedback);
-          if (fRes.allStudents) setCohortStudents(fRes.allStudents);
-        }
       }
     } catch (err) {
       console.error(err);
@@ -239,8 +230,21 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         setCurrentUser(data.user);
-        triggerNotification('Profile details updated successfully');
-        // Refresh leaderboard to reflect CGPA/track changes
+        const notifyText = updated.photoURL !== undefined
+          ? (updated.photoURL ? 'Profile photo updated successfully!' : 'Profile photo removed. Initial avatar active.')
+          : 'Profile details updated successfully';
+        triggerNotification(notifyText);
+
+        // Synchronize with Firestore user document if signed in
+        if (auth.currentUser) {
+          try {
+            await setDoc(doc(db, 'users', auth.currentUser.uid), updated, { merge: true });
+          } catch (dbErr) {
+            console.warn('Firestore profile sync caught:', dbErr);
+          }
+        }
+
+        // Refresh leaderboard to reflect CGPA/track/photo changes
         const lRes = await fetch('/api/leaderboard').then((r) => r.json());
         if (lRes.success) setLeaderboard(lRes.leaderboard);
       }
@@ -432,8 +436,10 @@ export default function App() {
     }
   };
 
-  // Handle Submit Teacher Feedback
-  const handleSubmitTeacherFeedback = async (feedbackData: any) => {
+
+
+  // Handle Submit Teacher Feedback or Solution
+  const handleSubmitFeedback = async (feedbackData: any) => {
     try {
       const res = await fetch('/api/feedback', {
         method: 'POST',
@@ -442,12 +448,34 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        setFeedbacks((prev) => [data.feedback, ...prev]);
-        triggerNotification('Faculty evaluation recorded successfully');
+        triggerNotification(data.message || 'Feedback / Solution published successfully');
+        const fbRes = await fetch('/api/feedback').then((r) => r.json());
+        if (fbRes.success) setFeedbacks(fbRes.feedback);
+        // Refresh resources in case a study resource was attached
+        const rRes = await fetch('/api/resources').then((r) => r.json());
+        if (rRes.success) setResources(rRes.resources);
+      } else {
+        triggerNotification(`Error: ${data.error}`);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Feedback submit error:', err);
+      triggerNotification('Failed to submit feedback.');
     }
+  };
+
+  // Handle navigate to chat with specific peer or teacher
+  const handleNavigateToChat = (teacherOrStudentId: string) => {
+    setSelectedPeerId(teacherOrStudentId);
+    setActiveTab('messages');
+    fetch(`/api/messages?peerId=${teacherOrStudentId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          if (data.peers && data.peers.length > 0) setPeers(data.peers);
+          setActiveThread(data.activeThread);
+        }
+      })
+      .catch(console.error);
   };
 
   // Handle Admin Add Question
@@ -507,9 +535,6 @@ export default function App() {
     currentUser !== null &&
     (currentUser.role === 'admin' ||
       currentUser.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase());
-
-  const isTeacherOrAdmin =
-    currentUser !== null && (currentUser.role === 'teacher' || isAdmin);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-slate-900 selection:text-white">
@@ -584,6 +609,20 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'feedback' && (
+          <TeacherFeedbackView
+            feedbacks={feedbacks}
+            currentUser={currentUser}
+            cohortStudents={cohortStudents}
+            onSubmitFeedback={handleSubmitFeedback}
+            onNavigateToChat={handleNavigateToChat}
+            onOpenLogin={(role = 'student') => {
+              setLoginInitialRole(role);
+              setLoginModalOpen(true);
+            }}
+          />
+        )}
+
         {activeTab === 'leaderboard' && (
           <LeaderboardView
             students={leaderboard}
@@ -601,52 +640,6 @@ export default function App() {
             onSelectPeer={handleSelectPeerForMessage}
             onSendMessage={handleSendMessage}
           />
-        )}
-
-        {/* STRICT RBAC: Only Teacher and Admin can access Teacher Evaluation Page */}
-        {activeTab === 'feedback' && (
-          isTeacherOrAdmin ? (
-            <TeacherFeedbackView
-              feedbacks={feedbacks}
-              currentUser={currentUser!}
-              allCohortStudents={cohortStudents}
-              onSubmitTeacherFeedback={handleSubmitTeacherFeedback}
-            />
-          ) : (
-            <div className="max-w-xl mx-auto py-16 px-4 text-center space-y-5 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm my-8">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mx-auto">
-                <School className="w-7 h-7" />
-              </div>
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                  Teacher & Faculty Access Restricted
-                </span>
-                <h2 className="text-2xl font-extrabold text-slate-900">
-                  Faculty Evaluation Portal
-                </h2>
-                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed pt-1">
-                  Only verified university professors, faculty mentors, and platform administrators can access this portal to evaluate student submissions and author mentor verdicts. Students cannot view or access teacher tools.
-                </p>
-              </div>
-              <div className="pt-2 flex items-center justify-center gap-3">
-                <button
-                  onClick={() => {
-                    setLoginInitialRole('teacher');
-                    setLoginModalOpen(true);
-                  }}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
-                >
-                  Faculty / Teacher Sign-In
-                </button>
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
-                >
-                  Return to Home
-                </button>
-              </div>
-            </div>
-          )
         )}
 
         {activeTab === 'resources' && (
@@ -700,7 +693,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Student / Teacher Google Login Modal */}
+      {/* Student / Website Owner Google Login Modal */}
       {loginModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="relative w-full max-w-4xl my-auto animate-in fade-in zoom-in-95 duration-150">

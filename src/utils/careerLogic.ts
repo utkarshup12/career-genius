@@ -2,7 +2,7 @@
  * Career Genius - Pure Business & Scoring Logic
  */
 
-import { SharedResource } from '../types/index.ts';
+import type { SharedResource } from '../types/index.ts';
 
 export interface AssessmentResult {
   score: number;
@@ -197,14 +197,14 @@ export function getTrackRoadmap(track: string): RoadmapMilestone[] {
       {
         id: 'fe-m5',
         stepNumber: 5,
-        title: 'Capstone & Placement: Faculty Code Review & Mock Rounds',
+        title: 'Capstone & Placement: Comprehensive Technical Portfolio Defense',
         stage: 'Capstone & Placement',
-        description: 'Receive formal faculty endorsement, refine project portfolio, and conduct technical mock interview sessions with peers.',
+        description: 'Finalize production project portfolio, pass cross-domain technical challenges, and conduct peer mock interview sessions.',
         estimatedWeeks: 2,
         skills: ['System Design for Frontend', 'Web Vitals Defense', 'Behavioral Alignment'],
-        actionType: 'feedback',
-        actionTarget: 'feedback',
-        deliverableName: 'Official Teacher Evaluation & Interview Clearance',
+        actionType: 'assessment',
+        actionTarget: 'assessments',
+        deliverableName: 'Final Capstone Technical Assessment & Placement Clearance',
       },
     ];
   }
@@ -268,12 +268,12 @@ export function getTrackRoadmap(track: string): RoadmapMilestone[] {
         stepNumber: 5,
         title: 'Capstone & Placement: High-Concurrency System Design',
         stage: 'Capstone & Placement',
-        description: 'Present microservice scalability designs to faculty mentors and pass peer system design interview rounds.',
+        description: 'Demonstrate microservice scalability designs, distributed cache resilience, and pass system design interview rounds.',
         estimatedWeeks: 2,
         skills: ['Microservice Architecture', 'Distributed Lock Strategies', 'Interview Defense'],
-        actionType: 'feedback',
-        actionTarget: 'feedback',
-        deliverableName: 'Faculty Endorsement & System Design Clearance',
+        actionType: 'assessment',
+        actionTarget: 'assessments',
+        deliverableName: 'System Design Benchmark Assessment & Clearance',
       },
     ];
   }
@@ -335,14 +335,14 @@ export function getTrackRoadmap(track: string): RoadmapMilestone[] {
       {
         id: 'ai-m5',
         stepNumber: 5,
-        title: 'Capstone & Placement: LLM Observability & Faculty Review',
+        title: 'Capstone & Placement: LLM Observability & Production Review',
         stage: 'Capstone & Placement',
-        description: 'Demonstrate hallucination guardrails, token budget optimization, and obtain faculty evaluation endorsement.',
+        description: 'Demonstrate hallucination guardrails, token budget optimization, and complete advanced AI diagnostic assessment.',
         estimatedWeeks: 2,
         skills: ['RAG Triad Evaluation', 'Model Drift Observability', 'Technical Defense'],
-        actionType: 'feedback',
-        actionTarget: 'feedback',
-        deliverableName: 'Faculty AI Portfolio Approval & Interview Clearance',
+        actionType: 'assessment',
+        actionTarget: 'assessments',
+        deliverableName: 'AI Model Defense & Placement Clearance',
       },
     ];
   }
@@ -404,14 +404,14 @@ export function getTrackRoadmap(track: string): RoadmapMilestone[] {
     {
       id: 'sw-m5',
       stepNumber: 5,
-      title: 'Capstone & Placement: Comprehensive Faculty Evaluation',
+      title: 'Capstone & Placement: Full Spectrum Technical Placement Clearance',
       stage: 'Capstone & Placement',
-      description: 'Complete cross-domain assessments, obtain mentor feedback reports, and conduct live peer coding sessions.',
+      description: 'Complete cross-domain assessments, refine portfolio projects, and verify platform certification benchmarks.',
       estimatedWeeks: 2,
       skills: ['System Design Defense', 'Behavioral Interviews', 'Code Reviews'],
-      actionType: 'feedback',
-      actionTarget: 'feedback',
-      deliverableName: 'Faculty Endorsement & Placement Clearance',
+      actionType: 'assessment',
+      actionTarget: 'assessments',
+      deliverableName: 'Platform Certification & Placement Clearance',
     },
   ];
 }

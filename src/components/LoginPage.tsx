@@ -36,7 +36,7 @@ interface LoginPageProps {
   currentUser: UserProfile | null;
   onLoginSuccess: (user: UserProfile) => void;
   onClose?: () => void;
-  initialRole?: 'student' | 'admin';
+  initialRole?: 'student' | 'teacher' | 'admin';
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
@@ -45,8 +45,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onClose,
   initialRole = 'student',
 }) => {
-  const [activeTab, setActiveTab] = useState<'student' | 'owner'>(
-    initialRole === 'admin' ? 'owner' : 'student'
+  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'owner'>(
+    initialRole === 'admin' ? 'owner' : initialRole === 'teacher' ? 'teacher' : 'student'
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -309,6 +309,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         bookmarkedResourceIds: ['res-1'],
         assessmentScores: [],
         badges: [],
+        photoURL: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop&crop=faces',
       };
 
       await fetch('/api/user/sync-google', {
@@ -325,8 +326,50 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
   };
 
+  // Teacher Login Form State
+  const [customTeacherName, setCustomTeacherName] = useState('');
+  const [customTeacherEmail, setCustomTeacherEmail] = useState('');
+  const [customTeacherDept, setCustomTeacherDept] = useState('Department of Computer Science & Systems');
+  const [customTeacherSpec, setCustomTeacherSpec] = useState('Distributed Systems & Architecture');
+
+  // Teacher Login Handler
+  const handleTeacherLogin = async (teacherId?: string, tName?: string, tEmail?: string, tDept?: string, tSpec?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/teacher-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId,
+          name: tName || customTeacherName,
+          email: tEmail || customTeacherEmail,
+          department: tDept || customTeacherDept,
+          specialization: tSpec || customTeacherSpec,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        onLoginSuccess(data.user);
+      } else {
+        throw new Error(data.error || 'Failed to authenticate teacher.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Teacher login failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Quick Student Testing Profile
-  const handleQuickStudentLogin = async (studentName: string, studentEmail: string, studentCgpa: number, studentCollege: string, studentTrack: string) => {
+  const handleQuickStudentLogin = async (
+    studentName: string,
+    studentEmail: string,
+    studentCgpa: number,
+    studentCollege: string,
+    studentTrack: string,
+    photoURL?: string
+  ) => {
     setLoading(true);
     setError(null);
     try {
@@ -355,6 +398,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         bookmarkedResourceIds: [],
         assessmentScores: [],
         badges: [],
+        photoURL: photoURL || '',
       };
 
       await fetch('/api/user/sync-google', {
@@ -381,11 +425,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               Verified Authentication Gateway
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              {activeTab === 'owner' ? 'Website Owner & Admin Access' : 'Student Sign-In & Registration'}
+              {activeTab === 'owner'
+                ? 'Website Owner & Admin Access'
+                : activeTab === 'teacher'
+                ? 'Faculty & Teacher Portal'
+                : 'Student Sign-In & Registration'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-300">
               {activeTab === 'owner'
                 ? `Authorized administrator control portal for ${BOOTSTRAP_ADMIN_EMAIL}`
+                : activeTab === 'teacher'
+                ? 'Sign in as university faculty to resolve student doubts, share verified solutions, and author performance feedback.'
                 : 'Sign in with Google to benchmark skills and store progress in the database.'}
             </p>
           </div>
@@ -406,6 +456,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             >
               <GraduationCap className="w-3.5 h-3.5" />
               <span>Student Portal</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('teacher');
+                setStep('prompt');
+                setError(null);
+              }}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${
+                activeTab === 'teacher'
+                  ? 'bg-indigo-500 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Faculty & Teacher</span>
             </button>
             <button
               onClick={() => {
@@ -506,31 +571,92 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     </span>
                     <span className="text-[11px] text-slate-500">Instant one-click demo profiles</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <button
-                      onClick={() => handleQuickStudentLogin('Pranav Sharma', 'pranav.student@iitb.ac.in', 9.2, 'Indian Institute of Technology, Bombay', 'AI / ML Engineer')}
+                      onClick={() =>
+                        handleQuickStudentLogin(
+                          'Vaibhav Singh',
+                          'vaibhav.student@iitb.ac.in',
+                          9.2,
+                          'Indian Institute of Technology, Bombay',
+                          'AI / ML Engineer',
+                          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop&crop=faces'
+                        )
+                      }
                       disabled={loading}
-                      className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 text-left transition-colors flex items-center justify-between"
+                      className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 text-left transition-colors flex items-center justify-between group"
                     >
-                      <div>
-                        <div className="font-bold text-slate-900 text-xs">Pranav Sharma</div>
-                        <div className="text-[11px] text-slate-500">IIT Bombay · 9.20 CGPA</div>
-                        <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">AI / ML Engineer Track</span>
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop&crop=faces"
+                          alt="Vaibhav"
+                          className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                        />
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Vaibhav Singh</div>
+                          <div className="text-[11px] text-slate-500">IIT Bombay · 9.20 CGPA</div>
+                          <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">AI / ML Engineer Track</span>
+                        </div>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                      <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
                     </button>
 
                     <button
-                      onClick={() => handleQuickStudentLogin('Rohan Varma', 'rohan.student@bits.ac.in', 8.7, 'BITS Pilani', 'Backend Developer')}
+                      onClick={() =>
+                        handleQuickStudentLogin(
+                          'Yuvaraj Singh',
+                          'yuvaraj.student@bits.ac.in',
+                          8.85,
+                          'BITS Pilani',
+                          'Backend Developer',
+                          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces'
+                        )
+                      }
                       disabled={loading}
-                      className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 text-left transition-colors flex items-center justify-between"
+                      className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 text-left transition-colors flex items-center justify-between group"
                     >
-                      <div>
-                        <div className="font-bold text-slate-900 text-xs">Rohan Varma</div>
-                        <div className="text-[11px] text-slate-500">BITS Pilani · 8.70 CGPA</div>
-                        <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">Backend Developer Track</span>
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces"
+                          alt="Yuvaraj"
+                          className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                        />
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Yuvaraj Singh</div>
+                          <div className="text-[11px] text-slate-500">BITS Pilani · 8.85 CGPA</div>
+                          <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">Backend Developer Track</span>
+                        </div>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                      <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleQuickStudentLogin(
+                          'Himanshu Vishwakarma',
+                          'himanshu.student@nitt.ac.in',
+                          9.1,
+                          'National Institute of Technology, Trichy',
+                          'Full Stack Web Architect',
+                          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=faces'
+                        )
+                      }
+                      disabled={loading}
+                      className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 text-left transition-colors flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=faces"
+                          alt="Himanshu"
+                          className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                        />
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">Himanshu Vishwakarma</div>
+                          <div className="text-[11px] text-slate-500">NIT Trichy · 9.10 CGPA</div>
+                          <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">Full Stack Web Architect</span>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
                     </button>
                   </div>
                 </div>
@@ -558,7 +684,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Pranav Sharma"
+                      placeholder="e.g. Vaibhav Singh"
                       className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:outline-none bg-white"
                     />
                   </div>
@@ -643,7 +769,173 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         )}
 
         {/* ========================================================
-            TAB 2: WEBSITE OWNER & ADMIN PORTAL
+            TAB 2: FACULTY & TEACHER PORTAL
+        ======================================================== */}
+        {activeTab === 'teacher' && (
+          <div className="space-y-6 max-w-2xl mx-auto py-2">
+            <div className="p-5 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Faculty & Instructor Portal</h3>
+                  <p className="text-xs text-indigo-900 font-medium">
+                    Verified university instructors can publish verified solutions, attach resources, and evaluate students.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick 1-Click Faculty Profiles */}
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                Select Verified Faculty Member (Instant Access)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleTeacherLogin('tch-1')}
+                  disabled={loading}
+                  className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-500 bg-slate-50/80 hover:bg-indigo-50/40 text-left transition-all shadow-xs flex flex-col justify-between group"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <img
+                      src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=faces"
+                      alt="Sachin Yadav sir"
+                      className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Sachin Yadav sir</div>
+                      <div className="text-[11px] text-slate-500">CS & Systems</div>
+                      <span className="text-[10px] text-indigo-700 font-semibold block mt-0.5">Distributed Systems & Databases</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-1 text-[11px] text-indigo-600 font-bold">
+                    <span>Sign In</span>
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTeacherLogin('tch-2')}
+                  disabled={loading}
+                  className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-500 bg-slate-50/80 hover:bg-indigo-50/40 text-left transition-all shadow-xs flex flex-col justify-between group"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <img
+                      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
+                      alt="Deep singh sir"
+                      className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Deep singh sir</div>
+                      <div className="text-[11px] text-slate-500">Software Systems</div>
+                      <span className="text-[10px] text-indigo-700 font-semibold block mt-0.5">Frontend & React 19</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-1 text-[11px] text-indigo-600 font-bold">
+                    <span>Sign In</span>
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTeacherLogin('tch-3')}
+                  disabled={loading}
+                  className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-500 bg-slate-50/80 hover:bg-indigo-50/40 text-left transition-all shadow-xs flex flex-col justify-between group"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <img
+                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces"
+                      alt="Himanshu Dubey sir"
+                      className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Himanshu Dubey sir</div>
+                      <div className="text-[11px] text-slate-500">Cloud Infrastructure</div>
+                      <span className="text-[10px] text-indigo-700 font-semibold block mt-0.5">DevOps & Microservices</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-1 text-[11px] text-indigo-600 font-bold">
+                    <span>Sign In</span>
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTeacherLogin('tch-4')}
+                  disabled={loading}
+                  className="p-3.5 rounded-xl border border-slate-200 hover:border-indigo-500 bg-slate-50/80 hover:bg-indigo-50/40 text-left transition-all shadow-xs flex flex-col justify-between group"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <img
+                      src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop&crop=faces"
+                      alt="Nikita mam"
+                      className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs">Nikita mam</div>
+                      <div className="text-[11px] text-slate-500">AI & Data Science</div>
+                      <span className="text-[10px] text-indigo-700 font-semibold block mt-0.5">Deep Learning & NLP</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-1 text-[11px] text-indigo-600 font-bold">
+                    <span>Sign In</span>
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Teacher Sign-In */}
+            <div className="pt-4 border-t border-slate-200">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-3">
+                Or Enter Custom Faculty Credentials
+              </span>
+              <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Faculty Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Dr. Ramesh Kumar"
+                      value={customTeacherName}
+                      onChange={(e) => setCustomTeacherName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Institutional Email</label>
+                    <input
+                      type="email"
+                      placeholder="ramesh.kumar@faculty.university.edu"
+                      value={customTeacherEmail}
+                      onChange={(e) => setCustomTeacherEmail(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleTeacherLogin()}
+                  disabled={loading || !customTeacherName.trim() || !customTeacherEmail.trim()}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{loading ? 'Authenticating...' : 'Sign In as Faculty Member'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 3: WEBSITE OWNER & ADMIN PORTAL
         ======================================================== */}
         {activeTab === 'owner' && (
           <div className="space-y-6 max-w-lg mx-auto py-2">

@@ -40,6 +40,7 @@ export interface UserProfile {
     date: string;
   }[];
   badges?: AchievementBadge[];
+  photoURL?: string;
 }
 
 export interface Question {
@@ -107,24 +108,63 @@ export interface CareerTask {
   estimatedHours: number;
 }
 
-export interface TeacherFeedback {
+export interface TeacherProfile {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  specialization: string;
+  officeHours: string;
+  rating: number;
+  solvedProblemsCount: number;
+  photoURL?: string;
+}
+
+export interface StudentProblemInquiry {
   id: string;
   studentId: string;
   studentName: string;
+  studentEmail: string;
+  teacherId: string;
+  teacherName: string;
+  subject: string;
+  problemTitle: string;
+  problemDetails: string;
+  codeSnippet?: string;
+  status: 'pending' | 'resolved';
+  createdAt: string;
+  solutionId?: string;
+}
+
+export interface TeacherFeedback {
+  id: string;
+  studentId?: string;
+  studentName?: string;
   teacherName: string;
   teacherRole: string;
   subject: string;
   date: string;
-  ratings: {
+  ratings?: {
     technicalAcumen: number;
     problemSolving: number;
     projectDiscipline: number;
     consistency: number;
   };
-  keyStrengths: string[];
-  areasOfImprovement: string[];
-  mentorVerdict: string;
-  actionablePlan: string;
+  keyStrengths?: string[];
+  areasOfImprovement?: string[];
+  mentorVerdict?: string;
+  actionablePlan?: string;
+  // Problem solution and resource fields
+  problemTitle?: string;
+  problemDoubt?: string;
+  solutionSnippet?: string;
+  solutionExplanation?: string;
+  attachedResource?: {
+    title: string;
+    linkUrl: string;
+    fileType: 'PDF' | 'GitHub' | 'Notes' | 'CheatSheet';
+    category: string;
+  };
 }
 
 export interface PeerMessage {
@@ -136,16 +176,21 @@ export interface PeerMessage {
   receiverId: string;
   content: string;
   timestamp: string;
+  messageType?: 'text' | 'problem_query' | 'solution';
 }
 
 export interface PeerSummary {
   id: string;
   name: string;
-  cgpa: number;
+  role?: 'student' | 'teacher' | 'admin';
+  cgpa?: number;
   areaOfInterest: string;
   college: string;
+  department?: string;
+  officeHours?: string;
   lastMessage: string;
   lastTimestamp: string | null;
+  photoURL?: string;
 }
 
 export interface SharedResource {
@@ -176,4 +221,5 @@ export interface LeaderboardStudent {
   completedCourseCount: number;
   completedTaskCount: number;
   assessmentCount: number;
+  photoURL?: string;
 }

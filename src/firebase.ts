@@ -95,12 +95,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 // Connection test on boot
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    if (!auth.currentUser) {
+      return true;
+    }
+    await getDoc(doc(db, 'users', auth.currentUser.uid));
     return true;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase client appears offline. Please check network status.');
-    }
+    // Silently fall back to cached / offline state if connection is resolving
     return false;
   }
 }

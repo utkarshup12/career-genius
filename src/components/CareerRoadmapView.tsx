@@ -166,7 +166,7 @@ export const CareerRoadmapView: React.FC<CareerRoadmapViewProps> = ({
 
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
               {progressData.percentage >= 80
-                ? 'You have completed nearly the entire specialization! Ready for mock technical interviews and final faculty review.'
+                ? 'You have completed nearly the entire specialization! Ready for mock technical interviews and final capstone defense.'
                 : progressData.percentage >= 40
                 ? 'Strong foundational momentum. Focus on applied project deliverables and capstone challenges to achieve Job Ready certification.'
                 : 'Getting started on this career track. Begin with the foundational domain assessment to benchmark your skills.'}
@@ -377,8 +377,6 @@ export const CareerRoadmapView: React.FC<CareerRoadmapViewProps> = ({
                       ? 'Go to Required Course'
                       : activeMilestone.actionType === 'task'
                       ? 'Open Deliverable in Tasks'
-                      : activeMilestone.actionType === 'feedback'
-                      ? 'View Teacher Feedback & Action Plan'
                       : 'Take Assessment Now'}
                   </span>
                   <ExternalLink className="w-3.5 h-3.5" />

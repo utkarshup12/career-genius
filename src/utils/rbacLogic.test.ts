@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   isOwner,
   isUserAdmin,
+  isTeacher,
+  canManageSolutionsAndFeedback,
   canAccessAdminStudio,
   filterStudentsRoster,
   validateStudentRegistration,
@@ -36,6 +38,20 @@ test('canAccessAdminStudio forbids students and allows website owner / verified 
   assert.equal(canAccessAdminStudio(student), false);
   assert.equal(canAccessAdminStudio(admin), true);
   assert.equal(canAccessAdminStudio(owner), true);
+});
+
+test('isTeacher and canManageSolutionsAndFeedback allow verified teachers and platform admin', () => {
+  const student = { email: 'student1@gmail.com', role: 'student' };
+  const teacher = { email: 'sachin.yadav@faculty.edu', role: 'teacher' };
+  const owner = { email: 'uutkarsh319@gmail.com', role: 'student' };
+
+  assert.equal(isTeacher(student), false);
+  assert.equal(isTeacher(teacher), true);
+  assert.equal(isTeacher(owner), true);
+
+  assert.equal(canManageSolutionsAndFeedback(student), false);
+  assert.equal(canManageSolutionsAndFeedback(teacher), true);
+  assert.equal(canManageSolutionsAndFeedback(owner), true);
 });
 
 test('filterStudentsRoster accurately filters students by search term, track, and CGPA tier', () => {

@@ -7,14 +7,11 @@ import {
   X,
   Shield,
   GraduationCap,
+  BookOpen,
   ChevronDown,
   LogIn,
   LogOut,
   User,
-  Share2,
-  Check,
-  Smartphone,
-  Laptop,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -23,7 +20,7 @@ interface HeaderProps {
   currentUser: UserProfile | null;
   onSwitchRole: (role: UserRole) => void;
   onOpenAiMentor: () => void;
-  onOpenLogin: (role?: 'student' | 'admin') => void;
+  onOpenLogin: (role?: 'student' | 'teacher' | 'admin') => void;
   onSignOut: () => void;
 }
 
@@ -38,9 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-
-  const LIVE_URL = 'https://ais-pre-au3avitokhba6nliudiuk7-693060557594.asia-east1.run.app';
 
   const isOwner =
     currentUser !== null &&
@@ -55,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'roadmap', label: 'Roadmap' },
     { id: 'assessments', label: 'Assessments' },
     { id: 'courses', label: 'Courses & Certs' },
+    { id: 'feedback', label: 'Faculty & Solutions' },
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'messages', label: 'Peer Network' },
     { id: 'resources', label: 'Resources & Tasks' },
@@ -68,12 +63,6 @@ export const Header: React.FC<HeaderProps> = ({
   const handleNavClick = (id: string) => {
     setActiveTab(id);
     setMobileMenuOpen(false);
-  };
-
-  const handleCopyLiveLink = () => {
-    navigator.clipboard.writeText(LIVE_URL);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   return (
@@ -127,30 +116,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Zone 3: Actions & Account Switcher */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Live Website Sharing Button (Accessible for everyone on PC / Laptop / Mobile) */}
-            <button
-              onClick={handleCopyLiveLink}
-              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border ${
-                copiedLink
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 shadow-xs'
-              }`}
-              title="Copy public live website link for PC, laptop, or mobile"
-            >
-              {copiedLink ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Live Link Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="hidden md:inline">Share Live Site</span>
-                  <span className="md:hidden">Share</span>
-                </>
-              )}
-            </button>
-
             {/* AI Career Assistant Button */}
             <button
               onClick={onOpenAiMentor}
@@ -178,25 +143,35 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="relative">
                 <button
                   onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors shadow-xs ${
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors shadow-xs ${
                     isOwner
                       ? 'bg-amber-50 border-amber-300 text-amber-950 font-semibold'
+                      : currentUser.role === 'teacher'
+                      ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-semibold'
                       : 'border-slate-200 hover:border-slate-300 bg-white text-slate-800'
                   }`}
                   aria-haspopup="true"
                   aria-expanded={roleDropdownOpen}
                 >
-                  {isOwner ? (
+                  {currentUser.photoURL ? (
+                    <img
+                      src={currentUser.photoURL}
+                      alt={currentUser.name}
+                      className="w-5 h-5 rounded-full object-cover ring-1 ring-slate-300 shrink-0"
+                    />
+                  ) : isOwner ? (
                     <Shield className="w-3.5 h-3.5 text-amber-600" />
                   ) : isAdmin ? (
                     <Shield className="w-3.5 h-3.5 text-rose-600" />
+                  ) : currentUser.role === 'teacher' ? (
+                    <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
                   ) : (
                     <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
                   )}
                   <span className="capitalize font-semibold">
-                    {isOwner ? 'Owner' : currentUser.role}
+                    {isOwner ? 'Owner' : currentUser.role === 'teacher' ? 'Faculty' : currentUser.role}
                   </span>
-                  <span className="text-slate-500 text-xs font-bold hidden md:inline">
+                  <span className="text-slate-500 text-xs font-bold hidden md:inline truncate max-w-[100px]">
                     · {currentUser.name.split(' ')[0]}
                   </span>
                   <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -204,30 +179,58 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {roleDropdownOpen && (
                   <div
-                    className="absolute right-0 mt-1.5 w-68 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100"
+                    className="absolute right-0 mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                     role="menu"
                   >
-                    <div className="px-3.5 py-2 border-b border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+                    <div className="px-3.5 py-2.5 border-b border-slate-100">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                           Active Account
                         </span>
-                        {isOwner && (
+                        {isOwner ? (
                           <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
                             Website Owner
                           </span>
+                        ) : currentUser.role === 'teacher' ? (
+                          <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded">
+                            Faculty Mentor
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                            Student
+                          </span>
                         )}
                       </div>
-                      <div className="font-bold text-slate-900 text-xs truncate mt-0.5">
-                        {currentUser.name}
+
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-xs ring-1 ring-slate-200 shrink-0">
+                          {currentUser.photoURL ? (
+                            <img src={currentUser.photoURL} alt={currentUser.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>
+                              {currentUser.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-900 text-xs truncate">
+                            {currentUser.name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 font-mono truncate">
+                            {currentUser.email}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-500 font-mono truncate">
-                        {currentUser.email}
-                      </div>
+
                       {currentUser.role === 'student' && (
-                        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-600">
+                        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
                           <span>CGPA: <strong className="text-slate-900">{currentUser.cgpa.toFixed(2)}</strong></span>
                           <span>Points: <strong className="text-emerald-600 font-mono">{currentUser.points} XP</strong></span>
+                        </div>
+                      )}
+                      {currentUser.role === 'teacher' && (
+                        <div className="mt-1 text-[11px] text-indigo-700 font-medium truncate">
+                          {currentUser.college}
                         </div>
                       )}
                     </div>
@@ -340,16 +343,7 @@ export const Header: React.FC<HeaderProps> = ({
             );
           })}
 
-          {/* Quick share live link in mobile menu */}
-          <div className="pt-2 border-t border-slate-200 space-y-2">
-            <button
-              onClick={handleCopyLiveLink}
-              className="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl flex items-center justify-center gap-2"
-            >
-              <Share2 className="w-4 h-4 text-slate-600" />
-              <span>{copiedLink ? 'Link Copied to Clipboard!' : 'Copy Live Website Link (Mobile / PC)'}</span>
-            </button>
-
+          <div className="pt-3 border-t border-slate-200">
             {!currentUser ? (
               <button
                 onClick={() => {

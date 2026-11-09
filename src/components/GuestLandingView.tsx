@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   GraduationCap,
   Sparkles,
@@ -14,8 +14,6 @@ import {
   Zap,
   LogIn,
   Lock,
-  Share2,
-  Check,
   Smartphone,
   Laptop,
   Monitor,
@@ -35,15 +33,6 @@ export const GuestLandingView: React.FC<GuestLandingViewProps> = ({
   onOpenAiMentor,
   assessments,
 }) => {
-  const [copiedLink, setCopiedLink] = useState(false);
-  const LIVE_URL = 'https://ais-pre-au3avitokhba6nliudiuk7-693060557594.asia-east1.run.app';
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(LIVE_URL);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
-  };
-
   return (
     <div className="space-y-12 pb-16">
       {/* 1. Hero Section */}
@@ -124,21 +113,11 @@ export const GuestLandingView: React.FC<GuestLandingViewProps> = ({
 
               <button
                 type="button"
-                onClick={handleCopy}
-                className="px-4 py-3.5 bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white font-medium text-sm rounded-xl transition-colors border border-slate-700 inline-flex items-center gap-2"
-                title="Copy live link for mobile and PC"
+                onClick={() => onNavigate('roadmap')}
+                className="px-5 py-3.5 bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white font-medium text-sm rounded-xl transition-colors border border-slate-700 inline-flex items-center gap-2"
               >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span className="text-emerald-400 font-semibold">Link Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-4 h-4 text-slate-400" />
-                    <span>Share Live Link</span>
-                  </>
-                )}
+                <Compass className="w-4 h-4 text-purple-400" />
+                <span>View Career Roadmaps</span>
               </button>
             </div>
           </div>
@@ -169,7 +148,7 @@ export const GuestLandingView: React.FC<GuestLandingViewProps> = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Pillar 1 */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors space-y-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
@@ -259,7 +238,7 @@ export const GuestLandingView: React.FC<GuestLandingViewProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {assessments.slice(0, 4).map((asmt) => (
             <div
               key={asmt.id}
@@ -299,7 +278,7 @@ export const GuestLandingView: React.FC<GuestLandingViewProps> = ({
         </div>
       </div>
 
-      {/* 4. Live Leaderboard & Public Access Information */}
+      {/* 4. Live Leaderboard & Platform Scoring Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-slate-900 text-white rounded-3xl p-8 sm:p-10 border border-slate-800 shadow-xl">
         <div className="lg:col-span-7 space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-amber-400">
@@ -333,61 +312,70 @@ export const GuestLandingView: React.FC<GuestLandingViewProps> = ({
           </div>
         </div>
 
-        {/* Live Multi-Device Link Box */}
+        {/* Live Cohort Ranking Breakdown Card */}
         <div className="lg:col-span-5 bg-slate-850 rounded-2xl border border-slate-750 p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between border-b border-slate-750 pb-3">
             <div className="flex items-center gap-2">
-              <Monitor className="w-4 h-4 text-emerald-400" />
+              <Trophy className="w-4 h-4 text-amber-400" />
               <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                Public Live Web App
+                Platform Ranking Formula
               </span>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Live Online
+            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              Live & Automated
             </span>
           </div>
 
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Share this URL with classmates, study groups, or open it on your smartphone or laptop:
-          </p>
+          <div className="space-y-3 text-xs">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                  A
+                </div>
+                <div>
+                  <div className="font-semibold text-white">Diagnostic Assessments</div>
+                  <div className="text-[10px] text-slate-400">Timed technical examinations</div>
+                </div>
+              </div>
+              <span className="font-mono text-emerald-400 font-bold">+100 pts</span>
+            </div>
 
-          <div className="p-3 bg-slate-900 rounded-xl border border-slate-700 font-mono text-[11px] text-emerald-400 break-all select-all">
-            {LIVE_URL}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs">
+                  C
+                </div>
+                <div>
+                  <div className="font-semibold text-white">Certified Course Modules</div>
+                  <div className="text-[10px] text-slate-400">Curriculum milestone completion</div>
+                </div>
+              </div>
+              <span className="font-mono text-sky-400 font-bold">+200 pts</span>
+            </div>
+
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs">
+                  T
+                </div>
+                <div>
+                  <div className="font-semibold text-white">Practical Capstone Tasks</div>
+                  <div className="text-[10px] text-slate-400">Hands-on GitHub deliverables</div>
+                </div>
+              </div>
+              <span className="font-mono text-purple-400 font-bold">+150 pts</span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 pt-1">
-            <button
-              onClick={handleCopy}
-              className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                copiedLink
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'bg-white hover:bg-slate-100 text-slate-950'
-              }`}
-            >
-              {copiedLink ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Copied Live Website Link!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-4 h-4" />
-                  <span>Copy Live Link for Mobile / PC</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="flex items-center justify-center gap-4 text-[11px] text-slate-400 pt-1">
+          <div className="flex items-center justify-center gap-4 text-[11px] text-slate-400 pt-1 border-t border-slate-750">
             <div className="flex items-center gap-1">
               <Laptop className="w-3.5 h-3.5 text-slate-400" />
-              <span>PC & Laptop</span>
+              <span>PC & Laptop Ready</span>
             </div>
             <span>•</span>
             <div className="flex items-center gap-1">
               <Smartphone className="w-3.5 h-3.5 text-slate-400" />
-              <span>Mobile / iOS / Android</span>
+              <span>Mobile Phone Ready</span>
             </div>
           </div>
         </div>

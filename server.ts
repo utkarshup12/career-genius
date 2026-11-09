@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import fs from 'fs';
@@ -7,8 +8,20 @@ import { evaluateStudentBadges } from './src/utils/careerLogic.ts';
 
 dotenv.config();
 
+function resolvePort(): number {
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const parsed = Number(process.argv[portArgIndex + 1]);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (process.env.PORT) {
+    const envPort = Number(process.env.PORT);
+    if (!isNaN(envPort) && envPort > 0) return envPort;
+  }
+  return 3000;
+}
+const PORT = resolvePort();
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
@@ -83,26 +96,38 @@ export interface UserProfile {
     date: string;
   }[];
   badges: any[];
+  photoURL?: string;
 }
 
 export interface TeacherFeedback {
   id: string;
-  studentId: string;
-  studentName: string;
+  studentId?: string;
+  studentName?: string;
   teacherName: string;
   teacherRole: string;
   subject: string;
   date: string;
-  ratings: {
+  ratings?: {
     technicalAcumen: number;
     problemSolving: number;
     projectDiscipline: number;
     consistency: number;
   };
-  keyStrengths: string[];
-  areasOfImprovement: string[];
-  mentorVerdict: string;
-  actionablePlan: string;
+  keyStrengths?: string[];
+  areasOfImprovement?: string[];
+  mentorVerdict?: string;
+  actionablePlan?: string;
+  // Problem solution and resource fields
+  problemTitle?: string;
+  problemDoubt?: string;
+  solutionSnippet?: string;
+  solutionExplanation?: string;
+  attachedResource?: {
+    title: string;
+    linkUrl: string;
+    fileType: 'PDF' | 'GitHub' | 'Notes' | 'CheatSheet';
+    category: string;
+  };
 }
 
 export interface PeerMessage {
@@ -114,6 +139,7 @@ export interface PeerMessage {
   receiverId: string;
   content: string;
   timestamp: string;
+  messageType?: 'text' | 'problem_query' | 'solution';
 }
 
 export interface SharedResource {
@@ -576,8 +602,8 @@ const courses: Course[] = [
     code: 'FE-101',
     title: 'Frontend Engineering Mastery & Architecture',
     track: 'Frontend Developer',
-    instructor: 'Dr. Aris Thorne',
-    instructorRole: 'Staff Frontend Architect, Ex-Vercel',
+    instructor: 'Deep singh sir',
+    instructorRole: 'Staff Frontend Architect & Faculty Advisor',
     duration: '4 Weeks (24 Hours)',
     level: 'Intermediate to Advanced',
     description: 'Master production-grade React architecture, concurrent rendering, state machines, micro-frontends, and Core Web Vitals optimization.',
@@ -623,8 +649,8 @@ const courses: Course[] = [
     code: 'BE-201',
     title: 'Distributed Backend & Cloud Systems',
     track: 'Backend Developer',
-    instructor: 'Distributed Systems Faculty',
-    instructorRole: 'Curriculum & Database Systems Lead',
+    instructor: 'Sachin Yadav sir',
+    instructorRole: 'Faculty Lead, Distributed Systems & Database Architecture',
     duration: '5 Weeks (30 Hours)',
     level: 'Advanced',
     description: 'Architect resilient backend services with PostgreSQL indexing, Redis caching, event streaming, and fault-tolerant microservices.',
@@ -670,8 +696,8 @@ const courses: Course[] = [
     code: 'AI-301',
     title: 'Applied AI & Machine Learning Engineering',
     track: 'AI / ML Engineer',
-    instructor: 'Dr. Siddharth Rao',
-    instructorRole: 'Principal AI Researcher & Gemini Systems Fellow',
+    instructor: 'Nikita mam',
+    instructorRole: 'Principal AI Faculty & Applied Machine Learning Lead',
     duration: '4 Weeks (28 Hours)',
     level: 'Advanced',
     description: 'Bridge research models into production applications. Build production RAG pipelines, fine-tune adapters, and master LLM orchestration.',
@@ -714,11 +740,269 @@ const courses: Course[] = [
   },
 ];
 
-// Teacher feedback records (initialized empty, only real faculty evaluations stored)
-let teacherFeedbacks: TeacherFeedback[] = [];
+export interface TeacherEntry {
+  id: string;
+  name: string;
+  email: string;
+  role: 'teacher';
+  department: string;
+  specialization: string;
+  officeHours: string;
+  rating: number;
+  solvedProblemsCount: number;
+  photoURL?: string;
+}
 
-// Peer Messages (initialized empty, real peer messaging populated dynamically)
-let peerMessages: PeerMessage[] = [];
+export interface StudentProblemInquiry {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  teacherId: string;
+  teacherName: string;
+  subject: string;
+  problemTitle: string;
+  problemDetails: string;
+  codeSnippet?: string;
+  status: 'pending' | 'resolved';
+  createdAt: string;
+  solutionId?: string;
+}
+
+const teachers: TeacherEntry[] = [
+  {
+    id: 'tch-1',
+    name: 'Sachin Yadav sir',
+    email: 'sachin.yadav@faculty.edu',
+    role: 'teacher',
+    department: 'Dept. of Computer Science & Systems',
+    specialization: 'Distributed Systems & Database Architecture',
+    officeHours: 'Mon & Wed: 3:00 PM - 5:00 PM',
+    rating: 4.96,
+    solvedProblemsCount: 58,
+    photoURL: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop&crop=faces',
+  },
+  {
+    id: 'tch-2',
+    name: 'Deep singh sir',
+    email: 'deep.singh@faculty.edu',
+    role: 'teacher',
+    department: 'Dept. of Software Systems & Engineering',
+    specialization: 'Frontend Architecture, React 19 & Web Vitals',
+    officeHours: 'Tue & Thu: 2:00 PM - 4:00 PM',
+    rating: 4.94,
+    solvedProblemsCount: 47,
+    photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=faces',
+  },
+  {
+    id: 'tch-3',
+    name: 'Himanshu Dubey sir',
+    email: 'himanshu.dubey@faculty.edu',
+    role: 'teacher',
+    department: 'Dept. of Cloud Infrastructure & DevOps',
+    specialization: 'Cloud Infrastructure, Docker & Microservices',
+    officeHours: 'Wed & Fri: 11:00 AM - 1:00 PM',
+    rating: 4.91,
+    solvedProblemsCount: 44,
+    photoURL: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=faces',
+  },
+  {
+    id: 'tch-4',
+    name: 'Nikita mam',
+    email: 'nikita.mam@faculty.edu',
+    role: 'teacher',
+    department: 'Dept. of Artificial Intelligence & Data Science',
+    specialization: 'Algorithms, LLM Systems & Deep Learning',
+    officeHours: 'Mon & Thu: 10:00 AM - 12:00 PM',
+    rating: 4.97,
+    solvedProblemsCount: 53,
+    photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=faces',
+  },
+];
+
+let studentInquiries: StudentProblemInquiry[] = [
+  {
+    id: 'inq-1',
+    studentId: 'student-vaibhav',
+    studentName: 'Vaibhav Singh',
+    studentEmail: 'vaibhav.singh@campus.edu',
+    teacherId: 'tch-1',
+    teacherName: 'Sachin Yadav sir',
+    subject: 'Distributed Backend & Databases',
+    problemTitle: 'Cache Stampede handling during Redis TTL expiration under 10k QPS',
+    problemDetails: 'When a popular key expires in Redis, multiple client requests concurrently hit the PostgreSQL database causing connection spikes. How to structure the distributed lock with fallback?',
+    codeSnippet: `// Current implementation fails during spike:\nconst cached = await redis.get(key);\nif (!cached) {\n  const data = await db.query(...);\n  await redis.set(key, data, 'EX', 60);\n  return data;\n}`,
+    status: 'resolved',
+    createdAt: '2026-10-29T10:15:00Z',
+    solutionId: 'sol-1',
+  },
+  {
+    id: 'inq-2',
+    studentId: 'student-yuvaraj',
+    studentName: 'Yuvaraj Singh',
+    studentEmail: 'yuvaraj.singh@campus.edu',
+    teacherId: 'tch-2',
+    teacherName: 'Deep singh sir',
+    subject: 'Frontend Architecture & Modern Web',
+    problemTitle: 'Smooth 60 FPS Table Filtering with React 19 Concurrent Actions',
+    problemDetails: 'Large dataset queries cause noticeable typing lag when filtering rows. How do we keep the input responsive without blocking browser paint?',
+    codeSnippet: `function FilterBox({ list }) {\n  const [query, setQuery] = useState('');\n  // Need advice on useTransition integration\n}`,
+    status: 'resolved',
+    createdAt: '2026-10-30T11:00:00Z',
+    solutionId: 'sol-2',
+  },
+  {
+    id: 'inq-3',
+    studentId: 'student-himanshu',
+    studentName: 'Himanshu Vishwakarma',
+    studentEmail: 'himanshu.v@campus.edu',
+    teacherId: 'tch-3',
+    teacherName: 'Himanshu Dubey sir',
+    subject: 'Cloud Infrastructure & DevOps',
+    problemTitle: 'Docker Multi-stage build optimization for Node.js microservices',
+    problemDetails: 'Our production image is currently 1.1GB. How do we strip unnecessary build tools and use alpine/distroless securely?',
+    status: 'pending',
+    createdAt: '2026-11-01T14:20:00Z',
+  },
+];
+
+// Teacher feedback & verified problem solutions
+let teacherFeedbacks: TeacherFeedback[] = [
+  {
+    id: 'sol-1',
+    studentId: 'student-vaibhav',
+    studentName: 'Vaibhav Singh',
+    teacherName: 'Sachin Yadav sir',
+    teacherRole: 'Faculty Lead, Distributed Systems & Database Architecture',
+    subject: 'Distributed Systems & Database Architecture',
+    date: '2026-10-29',
+    problemTitle: 'Cache Stampede Mitigation via Mutex Lock & Probabilistic Early Recomputation',
+    problemDoubt: 'How to prevent multiple concurrent requests hitting the DB when a high-traffic cache key expires.',
+    solutionSnippet: `// Verified Faculty Solution:\nasync function getWithMutex(key, ttlSeconds, fetchFn) {\n  let val = await redis.get(key);\n  if (val) return JSON.parse(val);\n\n  const lockKey = \`lock:\${key}\`;\n  const acquired = await redis.set(lockKey, '1', 'NX', 'EX', 5);\n  if (acquired) {\n    try {\n      const fresh = await fetchFn();\n      await redis.set(key, JSON.stringify(fresh), 'EX', ttlSeconds);\n      return fresh;\n    } finally {\n      await redis.del(lockKey);\n    }\n  } else {\n    // Backoff wait and re-check cache\n    await new Promise(r => setTimeout(r, 50));\n    return getWithMutex(key, ttlSeconds, fetchFn);\n  }\n}`,
+    solutionExplanation: 'Utilize Redis SET key NX EX 5 to establish a temporary distributed mutex. Only the winning worker thread queries the database and refreshes the cache; all other threads backoff and read the newly populated cache key.',
+    attachedResource: {
+      title: 'Distributed Caching & Stampede Prevention Blueprint',
+      linkUrl: 'https://notes.careergenius.edu/cache-stampede-mutex.pdf',
+      fileType: 'CheatSheet',
+      category: 'Backend & Cloud',
+    },
+    ratings: {
+      technicalAcumen: 10,
+      problemSolving: 9,
+      projectDiscipline: 9,
+      consistency: 9,
+    },
+    mentorVerdict: 'Outstanding depth on concurrency. The applied mutex solution demonstrates production systems readiness.',
+    actionablePlan: 'Integrate this mutex pattern into your Task #4 containerized microservice project.',
+  },
+  {
+    id: 'sol-2',
+    studentId: 'student-yuvaraj',
+    studentName: 'Yuvaraj Singh',
+    teacherName: 'Deep singh sir',
+    teacherRole: 'Staff Frontend Architect & Faculty Advisor',
+    subject: 'Frontend Architecture & Modern Web',
+    date: '2026-10-30',
+    problemTitle: 'React 19 Non-blocking Search Filter with useTransition',
+    problemDoubt: 'How to keep typing input responsive at 60 FPS while filtering a dataset with 5,000+ complex items without blocking UI paint.',
+    solutionSnippet: `// Faculty Architecture Pattern:\nfunction SearchRoster({ items }) {\n  const [query, setQuery] = useState('');\n  const [filtered, setFiltered] = useState(items);\n  const [isPending, startTransition] = useTransition();\n\n  function handleChange(e) {\n    const text = e.target.value;\n    setQuery(text); // Immediate high-priority UI update\n    startTransition(() => {\n      // Deferred interruptible background computation\n      const result = items.filter(it => it.name.toLowerCase().includes(text.toLowerCase()));\n      setFiltered(result);\n    });\n  }\n  return <input value={query} onChange={handleChange} />;\n}`,
+    solutionExplanation: 'Separating urgent state (input cursor typing) from interruptible transition state guarantees zero layout freezing. React 19 yields to browser paint frames while computing the heavy filter.',
+    attachedResource: {
+      title: 'React 19 Concurrent Scheduling & Optimization Guide',
+      linkUrl: 'https://github.com/careergenius/react19-concurrent-patterns',
+      fileType: 'GitHub',
+      category: 'Frontend Engineering',
+    },
+    ratings: {
+      technicalAcumen: 9,
+      problemSolving: 9,
+      projectDiscipline: 9,
+      consistency: 8,
+    },
+    mentorVerdict: 'Applied knowledge of concurrent scheduling patterns.',
+    actionablePlan: 'Practice refactoring your table filters to leverage useTransition.',
+  },
+  {
+    id: 'sol-3',
+    studentId: 'student-himanshu',
+    studentName: 'Himanshu Vishwakarma',
+    teacherName: 'Himanshu Dubey sir',
+    teacherRole: 'Faculty Lead, Cloud Infrastructure & DevOps',
+    subject: 'Cloud Infrastructure & DevOps',
+    date: '2026-11-01',
+    problemTitle: 'Docker Multi-Stage Build & Distroless Image Shrinking',
+    problemDoubt: 'How to reduce container attack surface and minimize image artifact footprint from 1GB+ to < 85MB.',
+    solutionSnippet: `// Production Multi-stage Dockerfile:\nFROM node:22-alpine AS builder\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\nFROM gcr.io/distroless/nodejs22-debian12\nWORKDIR /app\nCOPY --from=builder /app/dist ./dist\nCOPY --from=builder /app/node_modules ./node_modules\nEXPOSE 3000\nCMD ["dist/server.js"]`,
+    solutionExplanation: 'Leveraging multi-stage builds separates build toolchains (compiler, headers, development devDependencies) from the lean distroless runtime, slashing image sizes by over 90%.',
+    attachedResource: {
+      title: 'Docker Production Multi-Stage Hardening Guide',
+      linkUrl: 'https://notes.careergenius.edu/docker-multistage-hardening.pdf',
+      fileType: 'PDF',
+      category: 'Cloud Infrastructure',
+    },
+    ratings: {
+      technicalAcumen: 9,
+      problemSolving: 9,
+      projectDiscipline: 10,
+      consistency: 9,
+    },
+    mentorVerdict: 'Exemplary container hygiene and cloud architecture discipline.',
+    actionablePlan: 'Deploy this image directly to Google Cloud Run or Kubernetes cluster.',
+  },
+  {
+    id: 'sol-4',
+    studentId: 'student-vaibhav',
+    studentName: 'Vaibhav Singh',
+    teacherName: 'Nikita mam',
+    teacherRole: 'Principal AI Faculty & Applied Machine Learning Lead',
+    subject: 'Machine Learning & AI Engineering',
+    date: '2026-11-02',
+    problemTitle: 'Cosine Similarity vs Dot Product in High-Dimensional Normalized Embeddings',
+    problemDoubt: 'When should RAG systems choose Dot Product over Cosine Distance for vector index queries?',
+    solutionSnippet: `// Normalized Vector Dot Product equals Cosine Similarity:\nfunction cosineSimilarity(vecA, vecB) {\n  // When vecA and vecB are L2-normalized:\n  let dotProduct = 0;\n  for (let i = 0; i < vecA.length; i++) {\n    dotProduct += vecA[i] * vecB[i];\n  }\n  return dotProduct; // Direct O(d) calculation\n}`,
+    solutionExplanation: 'When embedding models generate unit-normalized vectors (norm = 1.0), Cosine Distance is mathematically identical to Dot Product. Dot Product eliminates vector magnitude square-root operations during ANN search, drastically reducing vector DB latency.',
+    attachedResource: {
+      title: 'Vector Search Indexing & Similarity Mathematics Blueprint',
+      linkUrl: 'https://notes.careergenius.edu/vector-embeddings-math.pdf',
+      fileType: 'Notes',
+      category: 'Machine Learning',
+    },
+    ratings: {
+      technicalAcumen: 10,
+      problemSolving: 10,
+      projectDiscipline: 9,
+      consistency: 10,
+    },
+    mentorVerdict: 'Exceptional comprehension of vector space linear algebra and retrieval economics.',
+    actionablePlan: 'Apply this to your Task #5 vector search capstone project.',
+  },
+];
+
+// Peer & Faculty Messages
+let peerMessages: PeerMessage[] = [
+  {
+    id: 'msg-seed-1',
+    senderId: 'student-vaibhav',
+    senderName: 'Vaibhav Singh',
+    senderRole: 'student',
+    senderCgpa: 9.2,
+    receiverId: 'tch-1',
+    content: 'Hello Sachin Yadav sir! I submitted an inquiry regarding Redis cache stampede locks. Looking forward to your guidance on mutex backoffs.',
+    timestamp: '2026-10-29T10:16:00Z',
+    messageType: 'problem_query',
+  },
+  {
+    id: 'msg-seed-2',
+    senderId: 'tch-1',
+    senderName: 'Sachin Yadav sir',
+    senderRole: 'teacher',
+    senderCgpa: 9.9,
+    receiverId: 'student-vaibhav',
+    content: 'Hi Vaibhav! Great inquiry. I just published a verified solution using SET key NX EX and attached our Distributed Caching Blueprint PDF. Check the Faculty Solutions tab as well!',
+    timestamp: '2026-10-29T10:30:00Z',
+    messageType: 'solution',
+  },
+];
 
 // Shared Resources curated by Platform Engineering & Academic Teams
 let sharedResources: SharedResource[] = [
@@ -792,13 +1076,14 @@ app.post('/api/user/logout', (req: Request, res: Response) => {
 
 // Sync Google or Email Authenticated User
 app.post('/api/user/sync-google', (req: Request, res: Response) => {
-  const { id, name, email, cgpa, areaOfInterest, college, graduationYear } = req.body;
+  const { id, name, email, cgpa, areaOfInterest, college, graduationYear, photoURL } = req.body;
   if (!id || !email) {
     return res.status(400).json({ success: false, error: 'User ID and email are required.' });
   }
 
   const isOwnerEmail = String(email).toLowerCase() === 'uutkarsh319@gmail.com';
-  const assignedRole: 'student' | 'admin' = isOwnerEmail ? 'admin' : 'student';
+  const requestedRole = req.body.role === 'teacher' ? 'teacher' : 'student';
+  const assignedRole: 'student' | 'teacher' | 'admin' = isOwnerEmail ? 'admin' : requestedRole;
 
   const existingStudent = cohortStudents.find((s) => s.id === id || s.email.toLowerCase() === String(email).toLowerCase());
 
@@ -810,6 +1095,7 @@ app.post('/api/user/sync-google', (req: Request, res: Response) => {
     if (areaOfInterest) existingStudent.areaOfInterest = areaOfInterest;
     if (college) existingStudent.college = college;
     if (graduationYear) existingStudent.graduationYear = graduationYear;
+    if (photoURL !== undefined) existingStudent.photoURL = photoURL;
     currentUser = { ...existingStudent };
   } else {
     const newStudent: UserProfile = {
@@ -817,11 +1103,11 @@ app.post('/api/user/sync-google', (req: Request, res: Response) => {
       name: String(name || email.split('@')[0]),
       email: String(email),
       role: assignedRole,
-      cgpa: typeof cgpa === 'number' ? cgpa : 8.5,
-      areaOfInterest: String(areaOfInterest || 'Software Developer'),
-      college: String(college || 'National Engineering Institute'),
+      cgpa: typeof cgpa === 'number' ? cgpa : (assignedRole === 'teacher' ? 9.8 : 8.5),
+      areaOfInterest: String(areaOfInterest || (assignedRole === 'teacher' ? 'Computer Science & Architecture' : 'Software Developer')),
+      college: String(college || (assignedRole === 'teacher' ? 'Faculty Department of Computer Science' : 'National Engineering Institute')),
       graduationYear: Number(graduationYear) || 2026,
-      points: 1000,
+      points: assignedRole === 'teacher' ? 3500 : 1000,
       rank: cohortStudents.length + 1,
       weeklyActivity: [
         { day: 'Mon', studyHours: 3.0, score: 150 },
@@ -832,11 +1118,12 @@ app.post('/api/user/sync-google', (req: Request, res: Response) => {
         { day: 'Sat', studyHours: 5.0, score: 320 },
         { day: 'Sun', studyHours: 3.5, score: 190 },
       ],
-      completedCourseIds: [],
-      completedTaskIds: [],
+      completedCourseIds: assignedRole === 'teacher' ? ['course-fe', 'course-be', 'course-ai'] : [],
+      completedTaskIds: assignedRole === 'teacher' ? ['task-1', 'task-2', 'task-3', 'task-4', 'task-5'] : [],
       assessmentScores: [],
       bookmarkedResourceIds: [],
       badges: [],
+      photoURL: photoURL || '',
     };
     if (assignedRole === 'student') {
       cohortStudents.push(newStudent);
@@ -846,6 +1133,55 @@ app.post('/api/user/sync-google', (req: Request, res: Response) => {
 
   recalculateCohortRanks();
   res.json({ success: true, user: currentUser, message: `Session synced for ${currentUser.email}` });
+});
+
+// Teachers Directory Endpoint
+app.get('/api/teachers', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    teachers,
+  });
+});
+
+// Teacher Dedicated Login Endpoint
+app.post('/api/auth/teacher-login', (req: Request, res: Response) => {
+  const { teacherId, name, email, department, specialization, photoURL } = req.body;
+  const existingTeacher = teachers.find((t) => t.id === teacherId || (email && t.email.toLowerCase() === String(email).toLowerCase()));
+
+  const facultyUser: UserProfile = {
+    id: existingTeacher ? existingTeacher.id : (teacherId || `tch-${Date.now()}`),
+    name: existingTeacher ? existingTeacher.name : (name || 'Faculty Mentor'),
+    email: existingTeacher ? existingTeacher.email : (email || 'faculty@careergenius.edu'),
+    role: 'teacher',
+    cgpa: 9.85,
+    areaOfInterest: existingTeacher ? existingTeacher.specialization : (specialization || 'Distributed Systems & Architecture'),
+    college: existingTeacher ? existingTeacher.department : (department || 'Department of Computer Science'),
+    graduationYear: 2018,
+    points: 3800,
+    rank: 1,
+    weeklyActivity: [
+      { day: 'Mon', studyHours: 6.0, score: 500 },
+      { day: 'Tue', studyHours: 5.5, score: 480 },
+      { day: 'Wed', studyHours: 6.0, score: 520 },
+      { day: 'Thu', studyHours: 5.0, score: 450 },
+      { day: 'Fri', studyHours: 4.5, score: 400 },
+      { day: 'Sat', studyHours: 3.0, score: 300 },
+      { day: 'Sun', studyHours: 2.0, score: 200 },
+    ],
+    completedCourseIds: ['course-fe', 'course-be', 'course-ai'],
+    completedTaskIds: ['task-1', 'task-2', 'task-3', 'task-4', 'task-5'],
+    assessmentScores: [],
+    bookmarkedResourceIds: [],
+    badges: [],
+    photoURL: existingTeacher?.photoURL || photoURL || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop&crop=faces',
+  };
+
+  currentUser = { ...facultyUser };
+  res.json({
+    success: true,
+    user: currentUser,
+    message: `Logged in as faculty mentor ${currentUser.name}`,
+  });
 });
 
 // Admin & Website Owner Endpoints
@@ -913,7 +1249,7 @@ app.post('/api/user/update-profile', (req: Request, res: Response) => {
     return res.status(401).json({ success: false, error: 'Unauthorized. Please sign in.' });
   }
 
-  const { name, cgpa, areaOfInterest, college, graduationYear } = req.body;
+  const { name, cgpa, areaOfInterest, college, graduationYear, photoURL } = req.body;
   
   if (name) currentUser.name = String(name).trim();
   if (typeof cgpa === 'number' && !isNaN(cgpa)) {
@@ -922,11 +1258,49 @@ app.post('/api/user/update-profile', (req: Request, res: Response) => {
   if (areaOfInterest) currentUser.areaOfInterest = String(areaOfInterest).trim();
   if (college) currentUser.college = String(college).trim();
   if (graduationYear) currentUser.graduationYear = Number(graduationYear);
+  if (photoURL !== undefined) {
+    currentUser.photoURL = photoURL;
+    // Sync to cohortStudents
+    const s = cohortStudents.find((st) => st.id === currentUser!.id || st.email.toLowerCase() === currentUser!.email.toLowerCase());
+    if (s) s.photoURL = photoURL;
+    // Sync to teachers if faculty
+    const t = teachers.find((tc) => tc.id === currentUser!.id || tc.email.toLowerCase() === currentUser!.email.toLowerCase());
+    if (t) t.photoURL = photoURL;
+  }
 
   // Recalculate rank across cohort
   recalculateCohortRanks();
 
   res.json({ success: true, user: currentUser, message: 'Profile updated successfully.' });
+});
+
+// Dedicated Profile Photo Upload & Update Endpoint
+app.post('/api/user/profile-photo', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Unauthorized. Please sign in to update profile photo.' });
+  }
+
+  const { photoURL } = req.body;
+  currentUser.photoURL = photoURL || '';
+
+  // Synchronize with registered student cohort
+  const matchedStudent = cohortStudents.find((s) => s.id === currentUser!.id || s.email.toLowerCase() === currentUser!.email.toLowerCase());
+  if (matchedStudent) {
+    matchedStudent.photoURL = currentUser.photoURL;
+  }
+
+  // Synchronize with faculty directory if logged in as teacher
+  const matchedTeacher = teachers.find((t) => t.id === currentUser!.id || t.email.toLowerCase() === currentUser!.email.toLowerCase());
+  if (matchedTeacher) {
+    matchedTeacher.photoURL = currentUser.photoURL;
+  }
+
+  res.json({
+    success: true,
+    photoURL: currentUser.photoURL,
+    user: currentUser,
+    message: currentUser.photoURL ? 'Profile photo updated successfully!' : 'Profile photo removed. Initial avatar active.',
+  });
 });
 
 app.post('/api/user/switch-role', (req: Request, res: Response) => {
@@ -1143,6 +1517,7 @@ app.get('/api/leaderboard', (req: Request, res: Response) => {
     completedCourseCount: s.completedCourseIds.length,
     completedTaskCount: s.completedTaskIds.length,
     assessmentCount: s.assessmentScores.length,
+    photoURL: s.photoURL || '',
   }));
 
   if (track !== 'all') {
@@ -1160,18 +1535,18 @@ app.get('/api/leaderboard', (req: Request, res: Response) => {
   });
 });
 
-// 6. Teacher Feedback Dashboard Endpoints
+// 6. Teacher Feedback & Problem Solutions Endpoints
 app.get('/api/feedback', (req: Request, res: Response) => {
-  // If unauthenticated guest, return sample feedback
+  // If unauthenticated guest, return cohort verified solutions
   if (!currentUser) {
     return res.json({
       success: true,
-      feedback: teacherFeedbacks.slice(0, 2),
+      feedback: teacherFeedbacks,
       allStudents: [],
     });
   }
 
-  // If teacher or admin, return feedback for all students and student roster
+  // If teacher or admin, return all feedback and student roster
   if (currentUser.role === 'teacher' || currentUser.role === 'admin') {
     return res.json({
       success: true,
@@ -1187,51 +1562,171 @@ app.get('/api/feedback', (req: Request, res: Response) => {
     });
   }
 
-  // Student personalized feedback
-  const studentFeedbacks = teacherFeedbacks.filter((fb) => fb.studentId === currentUser!.id);
+  // Student view: Return personal feedback + all cohort problem solutions
+  const visibleFeedbacks = teacherFeedbacks.filter(
+    (fb) => fb.studentId === currentUser!.id || fb.studentId === 'cohort' || !fb.studentId || fb.problemTitle
+  );
   res.json({
     success: true,
-    feedback: studentFeedbacks,
+    feedback: visibleFeedbacks,
   });
 });
 
 app.post('/api/feedback', (req: Request, res: Response) => {
   if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) {
-    return res.status(403).json({ success: false, error: 'Only verified teachers and administrators can submit evaluations.' });
+    return res.status(403).json({ success: false, error: 'Only verified teachers and administrators can post solutions and evaluations.' });
   }
 
-  const { studentId, subject, ratings, keyStrengths, areasOfImprovement, mentorVerdict, actionablePlan } = req.body;
+  const {
+    studentId,
+    subject,
+    ratings,
+    keyStrengths,
+    areasOfImprovement,
+    mentorVerdict,
+    actionablePlan,
+    problemTitle,
+    problemDoubt,
+    solutionSnippet,
+    solutionExplanation,
+    attachedResource,
+  } = req.body;
 
-  const targetStudent = cohortStudents.find((s) => s.id === studentId);
-  if (!targetStudent) {
-    return res.status(404).json({ success: false, error: 'Student not found.' });
+  let targetStudentName = 'Cohort Open Solution';
+  let targetStudentId = studentId || 'cohort';
+
+  if (studentId && studentId !== 'cohort') {
+    const student = cohortStudents.find((s) => s.id === studentId);
+    if (student) {
+      targetStudentName = student.name;
+      targetStudentId = student.id;
+    }
   }
 
   const newFeedback: TeacherFeedback = {
     id: `fb-${Date.now()}`,
-    studentId: targetStudent.id,
-    studentName: targetStudent.name,
+    studentId: targetStudentId,
+    studentName: targetStudentName,
     teacherName: currentUser.name || 'Faculty Mentor',
-    teacherRole: currentUser.role === 'teacher' ? 'Senior Faculty Advisor' : 'Platform Academic Dean',
-    subject: subject || 'Holistic Engineering Performance',
+    teacherRole: currentUser.role === 'teacher' ? 'Faculty Instructor' : 'Platform Academic Dean',
+    subject: subject || 'Computer Science & Software Architecture',
     date: new Date().toISOString().split('T')[0],
-    ratings: {
-      technicalAcumen: Number(ratings?.technicalAcumen) || 8,
-      problemSolving: Number(ratings?.problemSolving) || 8,
-      projectDiscipline: Number(ratings?.projectDiscipline) || 8,
-      consistency: Number(ratings?.consistency) || 8,
-    },
-    keyStrengths: Array.isArray(keyStrengths) ? keyStrengths : [keyStrengths].filter(Boolean),
-    areasOfImprovement: Array.isArray(areasOfImprovement) ? areasOfImprovement : [areasOfImprovement].filter(Boolean),
-    mentorVerdict: mentorVerdict || 'Demonstrating consistent progress across core technical assessments.',
-    actionablePlan: actionablePlan || 'Focus on completing scheduled course capstone milestones.',
+    ratings: ratings ? {
+      technicalAcumen: Number(ratings.technicalAcumen) || 8,
+      problemSolving: Number(ratings.problemSolving) || 8,
+      projectDiscipline: Number(ratings.projectDiscipline) || 8,
+      consistency: Number(ratings.consistency) || 8,
+    } : undefined,
+    keyStrengths: Array.isArray(keyStrengths) ? keyStrengths : keyStrengths ? [keyStrengths] : [],
+    areasOfImprovement: Array.isArray(areasOfImprovement) ? areasOfImprovement : areasOfImprovement ? [areasOfImprovement] : [],
+    mentorVerdict: mentorVerdict || 'Verified technical solution and architectural recommendation.',
+    actionablePlan: actionablePlan || 'Review code snippet and practice implementation in your project deliverables.',
+    problemTitle: problemTitle ? String(problemTitle).trim() : undefined,
+    problemDoubt: problemDoubt ? String(problemDoubt).trim() : undefined,
+    solutionSnippet: solutionSnippet ? String(solutionSnippet).trim() : undefined,
+    solutionExplanation: solutionExplanation ? String(solutionExplanation).trim() : undefined,
+    attachedResource: attachedResource && attachedResource.title ? attachedResource : undefined,
   };
 
   teacherFeedbacks.unshift(newFeedback);
-  res.json({ success: true, feedback: newFeedback, message: 'Teacher feedback recorded successfully.' });
+
+  // Automatically feed attached resource into platform Shared Resources directory
+  if (attachedResource && attachedResource.title && attachedResource.linkUrl) {
+    sharedResources.unshift({
+      id: `res-${Date.now()}`,
+      title: attachedResource.title,
+      category: attachedResource.category || 'Faculty Solution',
+      authorName: currentUser.name || 'Faculty Mentor',
+      authorRole: currentUser.role === 'teacher' ? 'Senior Faculty Advisor' : 'Academic Dean',
+      description: solutionExplanation || problemTitle || 'Verified technical solution resource shared by faculty mentor.',
+      linkUrl: attachedResource.linkUrl,
+      fileType: attachedResource.fileType || 'Notes',
+      upvotes: 15,
+      date: new Date().toISOString().split('T')[0],
+      userUpvoted: false,
+    });
+  }
+
+  res.json({
+    success: true,
+    feedback: newFeedback,
+    message: problemTitle ? 'Solution and study resource published successfully.' : 'Student feedback recorded successfully.',
+  });
 });
 
-// 7. Peer-to-Peer Messaging Endpoints
+// Student Problem Inquiries Endpoints
+app.get('/api/inquiries', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.json({ success: true, inquiries: [] });
+  }
+
+  if (currentUser.role === 'teacher') {
+    const list = studentInquiries.filter(
+      (inq) => inq.teacherId === currentUser!.id || inq.teacherName.toLowerCase() === currentUser!.name.toLowerCase()
+    );
+    return res.json({ success: true, inquiries: list });
+  }
+
+  if (currentUser.role === 'admin') {
+    return res.json({ success: true, inquiries: studentInquiries });
+  }
+
+  // Student's own inquiries
+  const studentList = studentInquiries.filter((inq) => inq.studentId === currentUser!.id);
+  res.json({ success: true, inquiries: studentList });
+});
+
+app.post('/api/inquiries', (req: Request, res: Response) => {
+  if (!currentUser) {
+    return res.status(401).json({ success: false, error: 'Please sign in to ask a problem to faculty.' });
+  }
+
+  const { teacherId, subject, problemTitle, problemDetails, codeSnippet } = req.body;
+  if (!problemTitle || !problemDetails) {
+    return res.status(400).json({ success: false, error: 'Problem title and details are required.' });
+  }
+
+  const targetTeacher = teachers.find((t) => t.id === teacherId) || teachers[0];
+
+  const newInquiry: StudentProblemInquiry = {
+    id: `inq-${Date.now()}`,
+    studentId: currentUser.id,
+    studentName: currentUser.name,
+    studentEmail: currentUser.email,
+    teacherId: targetTeacher.id,
+    teacherName: targetTeacher.name,
+    subject: subject || 'Computer Science & Engineering',
+    problemTitle: String(problemTitle).trim(),
+    problemDetails: String(problemDetails).trim(),
+    codeSnippet: codeSnippet ? String(codeSnippet).trim() : undefined,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+
+  studentInquiries.unshift(newInquiry);
+
+  // Send direct message so it immediately pops up in the teacher & student chat thread
+  const chatSnippet = `[PROBLEM DOUBT: ${newInquiry.problemTitle}]\n${newInquiry.problemDetails}${newInquiry.codeSnippet ? `\n\nCode:\n${newInquiry.codeSnippet}` : ''}`;
+  peerMessages.push({
+    id: `msg-${Date.now()}`,
+    senderId: currentUser.id,
+    senderName: currentUser.name,
+    senderRole: currentUser.role,
+    senderCgpa: currentUser.cgpa,
+    receiverId: targetTeacher.id,
+    content: chatSnippet,
+    timestamp: new Date().toISOString(),
+    messageType: 'problem_query',
+  });
+
+  res.json({
+    success: true,
+    inquiry: newInquiry,
+    message: `Your technical problem was submitted to ${targetTeacher.name}. You can also discuss in direct chat!`,
+  });
+});
+
+// 7. Peer-to-Peer & Faculty Messaging Endpoints
 app.get('/api/messages', (req: Request, res: Response) => {
   if (!currentUser) {
     return res.json({
@@ -1242,27 +1737,80 @@ app.get('/api/messages', (req: Request, res: Response) => {
   }
 
   const otherUserId = (req.query.peerId as string) || '';
+  const contacts: any[] = [];
 
-  // Return peers list with recent chat snippet
-  const peers = cohortStudents
-    .filter((s) => s.id !== currentUser!.id)
-    .map((peer) => {
+  // For students: include verified faculty members at top
+  if (currentUser.role === 'student') {
+    teachers.forEach((t) => {
       const thread = peerMessages.filter(
         (m) =>
-          (m.senderId === currentUser!.id && m.receiverId === peer.id) ||
-          (m.senderId === peer.id && m.receiverId === currentUser!.id)
+          (m.senderId === currentUser!.id && m.receiverId === t.id) ||
+          (m.senderId === t.id && m.receiverId === currentUser!.id)
       );
       const lastMsg = thread[thread.length - 1];
-      return {
-        id: peer.id,
-        name: peer.name,
-        cgpa: peer.cgpa,
-        areaOfInterest: peer.areaOfInterest,
-        college: peer.college,
-        lastMessage: lastMsg ? lastMsg.content : 'Start a career discussion...',
+      contacts.push({
+        id: t.id,
+        name: t.name,
+        role: 'teacher',
+        cgpa: 9.9,
+        areaOfInterest: t.specialization,
+        college: t.department,
+        department: t.department,
+        officeHours: t.officeHours,
+        photoURL: t.photoURL || '',
+        lastMessage: lastMsg ? lastMsg.content : 'Ask a problem doubt or request guidance...',
         lastTimestamp: lastMsg ? lastMsg.timestamp : null,
-      };
+      });
     });
+  }
+
+  // For teachers: include students who messaged them and cohort students
+  if (currentUser.role === 'teacher') {
+    cohortStudents.forEach((student) => {
+      const thread = peerMessages.filter(
+        (m) =>
+          (m.senderId === currentUser!.id && m.receiverId === student.id) ||
+          (m.senderId === student.id && m.receiverId === currentUser!.id)
+      );
+      const lastMsg = thread[thread.length - 1];
+      contacts.push({
+        id: student.id,
+        name: student.name,
+        role: 'student',
+        cgpa: student.cgpa,
+        areaOfInterest: student.areaOfInterest,
+        college: student.college,
+        photoURL: student.photoURL || '',
+        lastMessage: lastMsg ? lastMsg.content : 'Student registered in cohort...',
+        lastTimestamp: lastMsg ? lastMsg.timestamp : null,
+      });
+    });
+  }
+
+  // Add peer cohort students (for students and admins)
+  if (currentUser.role === 'student' || currentUser.role === 'admin') {
+    cohortStudents
+      .filter((s) => s.id !== currentUser!.id)
+      .forEach((peer) => {
+        const thread = peerMessages.filter(
+          (m) =>
+            (m.senderId === currentUser!.id && m.receiverId === peer.id) ||
+            (m.senderId === peer.id && m.receiverId === currentUser!.id)
+        );
+        const lastMsg = thread[thread.length - 1];
+        contacts.push({
+          id: peer.id,
+          name: peer.name,
+          role: peer.role || 'student',
+          cgpa: peer.cgpa,
+          areaOfInterest: peer.areaOfInterest,
+          college: peer.college,
+          photoURL: peer.photoURL || '',
+          lastMessage: lastMsg ? lastMsg.content : 'Start a career discussion...',
+          lastTimestamp: lastMsg ? lastMsg.timestamp : null,
+        });
+      });
+  }
 
   let activeThread: PeerMessage[] = [];
   if (otherUserId) {
@@ -1271,18 +1819,18 @@ app.get('/api/messages', (req: Request, res: Response) => {
         (m.senderId === currentUser!.id && m.receiverId === otherUserId) ||
         (m.senderId === otherUserId && m.receiverId === currentUser!.id)
     );
-  } else if (peers.length > 0) {
-    const defaultPeer = peers[0];
+  } else if (contacts.length > 0) {
+    const defaultContact = contacts[0];
     activeThread = peerMessages.filter(
       (m) =>
-        (m.senderId === currentUser!.id && m.receiverId === defaultPeer.id) ||
-        (m.senderId === defaultPeer.id && m.receiverId === currentUser!.id)
+        (m.senderId === currentUser!.id && m.receiverId === defaultContact.id) ||
+        (m.senderId === defaultContact.id && m.receiverId === currentUser!.id)
     );
   }
 
   res.json({
     success: true,
-    peers,
+    peers: contacts,
     activeThread,
   });
 });
@@ -1292,14 +1840,14 @@ app.post('/api/messages', (req: Request, res: Response) => {
     return res.status(401).json({ success: false, error: 'Please sign in to send messages.' });
   }
 
-  const { receiverId, content } = req.body;
+  const { receiverId, content, messageType } = req.body;
   if (!receiverId || !content || !String(content).trim()) {
     return res.status(400).json({ success: false, error: 'Recipient and message content are required.' });
   }
 
-  const targetPeer = cohortStudents.find((s) => s.id === receiverId);
+  const targetPeer = cohortStudents.find((s) => s.id === receiverId) || teachers.find((t) => t.id === receiverId);
   if (!targetPeer) {
-    return res.status(404).json({ success: false, error: 'Peer user not found.' });
+    return res.status(404).json({ success: false, error: 'Recipient user or faculty member not found.' });
   }
 
   const newMsg: PeerMessage = {
@@ -1311,6 +1859,7 @@ app.post('/api/messages', (req: Request, res: Response) => {
     receiverId,
     content: String(content).trim(),
     timestamp: new Date().toISOString(),
+    messageType: messageType || 'text',
   };
 
   peerMessages.push(newMsg);
